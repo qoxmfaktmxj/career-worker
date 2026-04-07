@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { CopyButton } from "@/components/copy-button";
@@ -40,6 +40,11 @@ function parseStringArray(value: string | null | undefined): string[] {
   }
 }
 
+async function fetchJobDetail(jobId: string): Promise<JobDetail> {
+  const response = await fetch(`/api/jobs/${jobId}`);
+  return (await response.json()) as JobDetail;
+}
+
 export default function JobDetailPage() {
   const params = useParams<{ jobId: string }>();
   const jobId = useMemo(
@@ -51,18 +56,24 @@ export default function JobDetailPage() {
   const [replyChannel, setReplyChannel] = useState("linkedin");
   const [outputContent, setOutputContent] = useState<string | null>(null);
 
-  const loadJob = async () => {
-    const response = await fetch(`/api/jobs/${jobId}`);
-    const data = (await response.json()) as JobDetail;
-    setJob(data);
-  };
-
   useEffect(() => {
     if (!jobId) {
       return;
     }
 
-    void loadJob();
+    let cancelled = false;
+
+    void (async () => {
+      const data = await fetchJobDetail(jobId);
+
+      if (!cancelled) {
+        startTransition(() => setJob(data));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [jobId]);
 
   const runAction = async (action: string, body?: Record<string, unknown>) => {
@@ -72,7 +83,8 @@ export default function JobDetailPage() {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    await loadJob();
+    const data = await fetchJobDetail(jobId);
+    startTransition(() => setJob(data));
   };
 
   const openOutput = async (id: number) => {

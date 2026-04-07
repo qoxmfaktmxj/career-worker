@@ -1,8 +1,31 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, startTransition, useEffect, useState } from "react";
 
 import { JobTable, type JobTableJob } from "@/components/job-table";
+
+async function fetchJobs(params: {
+  status: string;
+  source: string;
+  search: string;
+}): Promise<JobTableJob[]> {
+  const searchParams = new URLSearchParams();
+
+  if (params.status) {
+    searchParams.set("status", params.status);
+  }
+
+  if (params.source) {
+    searchParams.set("source", params.source);
+  }
+
+  if (params.search) {
+    searchParams.set("search", params.search);
+  }
+
+  const response = await fetch(`/api/jobs?${searchParams.toString()}`);
+  return (await response.json()) as JobTableJob[];
+}
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobTableJob[]>([]);
@@ -10,32 +33,26 @@ export default function JobsPage() {
   const [source, setSource] = useState("");
   const [search, setSearch] = useState("");
 
-  const loadJobs = async () => {
-    const params = new URLSearchParams();
-
-    if (status) {
-      params.set("status", status);
-    }
-
-    if (source) {
-      params.set("source", source);
-    }
-
-    if (search) {
-      params.set("search", search);
-    }
-
-    const response = await fetch(`/api/jobs?${params.toString()}`);
-    setJobs((await response.json()) as JobTableJob[]);
-  };
-
   useEffect(() => {
-    void loadJobs();
+    let cancelled = false;
+
+    void (async () => {
+      const data = await fetchJobs({ status, source, search: "" });
+
+      if (!cancelled) {
+        startTransition(() => setJobs(data));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [status, source]);
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await loadJobs();
+    const data = await fetchJobs({ status, source, search });
+    startTransition(() => setJobs(data));
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 interface Source {
   id: number;
@@ -21,6 +21,21 @@ interface ScanHistory {
   status: string;
 }
 
+async function fetchSourcesPageData(): Promise<{
+  sources: Source[];
+  history: ScanHistory[];
+}> {
+  const [sourcesResponse, historyResponse] = await Promise.all([
+    fetch("/api/scan/sources"),
+    fetch("/api/scan/history"),
+  ]);
+
+  return {
+    sources: (await sourcesResponse.json()) as Source[],
+    history: (await historyResponse.json()) as ScanHistory[],
+  };
+}
+
 export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [history, setHistory] = useState<ScanHistory[]>([]);
@@ -31,18 +46,23 @@ export default function SourcesPage() {
     keywords: "",
   });
 
-  const load = async () => {
-    const [sourcesResponse, historyResponse] = await Promise.all([
-      fetch("/api/scan/sources"),
-      fetch("/api/scan/history"),
-    ]);
-
-    setSources((await sourcesResponse.json()) as Source[]);
-    setHistory((await historyResponse.json()) as ScanHistory[]);
-  };
-
   useEffect(() => {
-    void load();
+    let cancelled = false;
+
+    void (async () => {
+      const data = await fetchSourcesPageData();
+
+      if (!cancelled) {
+        startTransition(() => {
+          setSources(data.sources);
+          setHistory(data.history);
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const addSource = async () => {
@@ -63,7 +83,11 @@ export default function SourcesPage() {
 
     setForm({ channel: "saramin", name: "", keywords: "" });
     setShowAdd(false);
-    await load();
+    const data = await fetchSourcesPageData();
+    startTransition(() => {
+      setSources(data.sources);
+      setHistory(data.history);
+    });
   };
 
   return (
