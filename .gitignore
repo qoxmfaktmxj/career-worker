@@ -3,11 +3,11 @@ node_modules/
 out/
 .env
 .env.local
-data/
-profile/
-outputs/
-jobs/raw/
-jobs/normalized/
+/data/
+/profile/
+/outputs/
+/jobs/raw/
+/jobs/normalized/
 coverage/
 *.db
 *.db-wal
