@@ -57,13 +57,7 @@ export default function LoginPage() {
           autoFocus
         />
 
-        {error ? (
-          <p className="mb-4 text-sm text-red-600">{error}</p>
-        ) : (
-          <p className="mb-4 text-sm text-zinc-500">
-            단일 사용자 도구이므로 비밀번호 한 단계만 확인합니다.
-          </p>
-        )}
+        {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
 
         <button
           type="submit"
