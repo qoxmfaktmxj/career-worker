@@ -3,6 +3,7 @@ import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_DB_PATH = path.join(__dirname, "../../data/test.db");
+const ORIGINAL_CWD = process.cwd();
 
 describe("Database", () => {
   beforeEach(() => {
@@ -25,6 +26,7 @@ describe("Database", () => {
     }
 
     vi.resetModules();
+    process.chdir(ORIGINAL_CWD);
 
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
@@ -62,5 +64,16 @@ describe("Database", () => {
     expect(result.journal_mode).toBe("wal");
 
     closeDb();
+  });
+
+  it("should reject unsupported relative data directory overrides", async () => {
+    const sandboxDir = path.join(__dirname, "../../.test-db-cwd");
+    fs.mkdirSync(sandboxDir, { recursive: true });
+    process.chdir(sandboxDir);
+    process.env.DATA_DIR = "./custom-data";
+
+    const { getDb } = await import("@/lib/db");
+
+    expect(() => getDb()).toThrow(/DATA_DIR/);
   });
 });

@@ -4,8 +4,13 @@ import path from "path";
 
 let db: Database.Database | null = null;
 
+function isDefaultRelativeDir(configured: string, defaultDir: string): boolean {
+  const normalized = configured.replace(/\\/g, "/").replace(/^\.\//, "");
+  return normalized === defaultDir;
+}
+
 function resolveDataDir(): string {
-  const configured = process.env.DATA_DIR;
+  const configured = process.env.DATA_DIR?.trim();
 
   if (!configured) {
     return path.join(/* turbopackIgnore: true */ process.cwd(), "data");
@@ -15,10 +20,11 @@ function resolveDataDir(): string {
     return configured;
   }
 
-  return path.join(
-    /* turbopackIgnore: true */ process.cwd(),
-    configured.replace(/^[.][\\/]/, "")
-  );
+  if (isDefaultRelativeDir(configured, "data")) {
+    return path.join(/* turbopackIgnore: true */ process.cwd(), "data");
+  }
+
+  throw new Error("DATA_DIR must be ./data or an absolute path");
 }
 
 export function getDb(): Database.Database {

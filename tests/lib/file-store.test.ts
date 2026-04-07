@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_DIR = path.join(__dirname, "../../.test-files");
 const TEST_DATA_DIR = path.join(TEST_DIR, "data");
+const ORIGINAL_CWD = process.cwd();
 
 describe("FileStore", () => {
   beforeEach(() => {
@@ -27,6 +28,7 @@ describe("FileStore", () => {
     }
 
     vi.resetModules();
+    process.chdir(ORIGINAL_CWD);
     fs.rmSync(TEST_DIR, { recursive: true, force: true });
   });
 
@@ -75,6 +77,11 @@ describe("FileStore", () => {
 
     writeProfileFile("profile.yml", "name: tester");
     writeProfileFile("career_story.md", "# Story");
+    fs.writeFileSync(
+      path.join(TEST_DIR, "profile", "notes.md"),
+      "# not a managed profile file",
+      "utf-8"
+    );
 
     expect(readProfileFile("profile.yml")).toContain("tester");
     expect(listProfileFiles().sort()).toEqual(["career_story.md", "profile.yml"]);
@@ -95,5 +102,18 @@ describe("FileStore", () => {
 
     expect(firstId).toBe("JOB-0001");
     expect(secondId).toBe("JOB-0002");
+  });
+
+  it("should reject unsupported relative profile directory overrides", async () => {
+    const sandboxDir = path.join(TEST_DIR, "cwd-sandbox");
+    fs.mkdirSync(sandboxDir, { recursive: true });
+    process.chdir(sandboxDir);
+    process.env.PROFILE_DIR = "./custom-profile";
+
+    const { writeProfileFile } = await import("@/lib/file-store");
+
+    expect(() => writeProfileFile("profile.yml", "name: tester")).toThrow(
+      /PROFILE_DIR/
+    );
   });
 });

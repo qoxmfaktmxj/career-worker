@@ -1,37 +1,105 @@
 import fs from "fs";
 import path from "path";
 
+const MANAGED_PROFILE_FILES = [
+  "profile.yml",
+  "master_resume.md",
+  "career_story.md",
+  "story_bank.md",
+  "answer_bank.md",
+  "links.md",
+] as const;
+
 function ensureDir(dir: string): void {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
 
-function resolveBaseDir(configured: string | undefined, fallbackDir: string): string {
-  if (!configured) {
-    return path.join(/* turbopackIgnore: true */ process.cwd(), fallbackDir);
+function isDefaultRelativeDir(configured: string, defaultDir: string): boolean {
+  const normalized = configured.replace(/\\/g, "/").replace(/^\.\//, "");
+  return normalized === defaultDir;
+}
+
+function resolveJobsDir(): string {
+  const configured = process.env.JOBS_DIR?.trim();
+
+  if (!configured || isDefaultRelativeDir(configured, "jobs")) {
+    return path.join(/* turbopackIgnore: true */ process.cwd(), "jobs");
   }
 
   if (path.isAbsolute(configured)) {
     return configured;
   }
 
-  return path.join(
-    /* turbopackIgnore: true */ process.cwd(),
-    configured.replace(/^[.][\\/]/, "")
-  );
+  throw new Error("JOBS_DIR must be ./jobs or an absolute path");
+}
+
+function resolveOutputsDir(): string {
+  const configured = process.env.OUTPUTS_DIR?.trim();
+
+  if (!configured || isDefaultRelativeDir(configured, "outputs")) {
+    return path.join(/* turbopackIgnore: true */ process.cwd(), "outputs");
+  }
+
+  if (path.isAbsolute(configured)) {
+    return configured;
+  }
+
+  throw new Error("OUTPUTS_DIR must be ./outputs or an absolute path");
+}
+
+function resolveProfileDir(): string {
+  const configured = process.env.PROFILE_DIR?.trim();
+
+  if (!configured || isDefaultRelativeDir(configured, "profile")) {
+    return path.join(/* turbopackIgnore: true */ process.cwd(), "profile");
+  }
+
+  if (path.isAbsolute(configured)) {
+    return configured;
+  }
+
+  throw new Error("PROFILE_DIR must be ./profile or an absolute path");
 }
 
 function jobsDir(): string {
-  return resolveBaseDir(process.env.JOBS_DIR, "jobs");
+  return resolveJobsDir();
 }
 
 function outputsDir(): string {
-  return resolveBaseDir(process.env.OUTPUTS_DIR, "outputs");
+  return resolveOutputsDir();
 }
 
 function profileDir(): string {
-  return resolveBaseDir(process.env.PROFILE_DIR, "profile");
+  return resolveProfileDir();
+}
+
+export function isManagedProfileFile(fileName: string): boolean {
+  return (MANAGED_PROFILE_FILES as readonly string[]).includes(fileName);
+}
+
+function resolveManagedProfilePath(fileName: string): string {
+  if (!isManagedProfileFile(fileName)) {
+    throw new Error("Unsupported profile file");
+  }
+
+  switch (fileName) {
+    case "profile.yml":
+      return path.join(profileDir(), "profile.yml");
+    case "master_resume.md":
+      return path.join(profileDir(), "master_resume.md");
+    case "career_story.md":
+      return path.join(profileDir(), "career_story.md");
+    case "story_bank.md":
+      return path.join(profileDir(), "story_bank.md");
+    case "answer_bank.md":
+      return path.join(profileDir(), "answer_bank.md");
+    case "links.md":
+      return path.join(profileDir(), "links.md");
+  }
+
+  throw new Error("Unsupported profile file");
 }
 
 export function saveRawJob(jobId: string, content: string): string {
@@ -100,7 +168,7 @@ export function readOutput(relativePath: string): string {
 }
 
 export function readProfileFile(fileName: string): string {
-  const filePath = path.join(profileDir(), fileName);
+  const filePath = resolveManagedProfilePath(fileName);
 
   if (!fs.existsSync(filePath)) {
     return "";
@@ -111,17 +179,11 @@ export function readProfileFile(fileName: string): string {
 
 export function writeProfileFile(fileName: string, content: string): void {
   ensureDir(profileDir());
-  fs.writeFileSync(path.join(profileDir(), fileName), content, "utf-8");
+  fs.writeFileSync(resolveManagedProfilePath(fileName), content, "utf-8");
 }
 
 export function listProfileFiles(): string[] {
-  const dir = profileDir();
-
-  if (!fs.existsSync(dir)) {
-    return [];
-  }
-
-  return fs
-    .readdirSync(dir)
-    .filter((fileName) => fileName.endsWith(".md") || fileName.endsWith(".yml"));
+  return MANAGED_PROFILE_FILES.filter((fileName) =>
+    fs.existsSync(resolveManagedProfilePath(fileName))
+  );
 }

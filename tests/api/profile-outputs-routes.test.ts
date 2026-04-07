@@ -97,6 +97,15 @@ describe("Profile and outputs API routes", () => {
     );
 
     expect(invalidResponse.status).toBe(400);
+
+    const unsupportedResponse = await profileRoute.PUT(
+      makeRequest("http://localhost/api/profile", "PUT", {
+        fileName: "notes.md",
+        content: "blocked",
+      })
+    );
+
+    expect(unsupportedResponse.status).toBe(400);
   });
 
   it("lists outputs with job and type filters", async () => {

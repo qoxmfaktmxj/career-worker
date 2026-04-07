@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  isManagedProfileFile,
   listProfileFiles,
   readProfileFile,
   writeProfileFile,
@@ -33,6 +34,10 @@ export async function PUT(request: NextRequest) {
 
   if (fileName.includes("..") || fileName.includes("/") || fileName.includes("\\")) {
     return NextResponse.json({ error: "invalid fileName" }, { status: 400 });
+  }
+
+  if (!isManagedProfileFile(fileName)) {
+    return NextResponse.json({ error: "unsupported fileName" }, { status: 400 });
   }
 
   writeProfileFile(fileName, content);
