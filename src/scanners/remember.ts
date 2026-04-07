@@ -1,0 +1,63 @@
+import * as cheerio from "cheerio";
+
+import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
+
+export function parseRememberHtml(html: string): ScanResult[] {
+  const $ = cheerio.load(html);
+  const results: ScanResult[] = [];
+
+  $(".job-card").each((_, element) => {
+    const item = $(element);
+    const linkElement = item.find("a").first();
+    const href = linkElement.attr("href") || "";
+    const sourceId = href.match(/jobs\/(\d+)/)?.[1] || "";
+    const position = item.find(".job-title").text().trim();
+    const company = item.find(".company-name").text().trim();
+    const location = item.find(".location").text().trim();
+    const deadline = item.find(".deadline").text().trim();
+
+    if (!position || !company) {
+      return;
+    }
+
+    results.push({
+      source: "remember",
+      source_id: sourceId,
+      company,
+      position,
+      location,
+      employment_type: "",
+      raw_url: href.startsWith("http")
+        ? href
+        : `https://career.rememberapp.co.kr${href}`,
+      deadline,
+      raw_text: [position, location].filter(Boolean).join("\n"),
+    });
+  });
+
+  return results;
+}
+
+export const rememberScanner: Scanner = {
+  name: "remember",
+
+  async scan(config: ScannerConfig): Promise<ScanResult[]> {
+    const keyword = config.keywords.join(" ");
+    const url = `https://career.rememberapp.co.kr/search?query=${encodeURIComponent(
+      keyword
+    )}`;
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CareerWorker/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Remember fetch error: ${response.status}`);
+    }
+
+    const html = await response.text();
+    return parseRememberHtml(html);
+  },
+};
