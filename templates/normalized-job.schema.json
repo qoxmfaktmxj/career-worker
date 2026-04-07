@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NormalizedJob",
+  "type": "object",
+  "required": [
+    "source",
+    "source_id",
+    "company",
+    "position",
+    "location",
+    "employment_type",
+    "raw_url",
+    "raw_text"
+  ],
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": ["saramin", "jobkorea", "remember"]
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "position": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "employment_type": {
+      "type": "string"
+    },
+    "company_size": {
+      "type": "string"
+    },
+    "employee_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "raw_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "deadline": {
+      "type": "string"
+    },
+    "salary_text": {
+      "type": "string"
+    },
+    "raw_text": {
+      "type": "string"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

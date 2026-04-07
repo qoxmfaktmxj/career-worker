@@ -4,7 +4,13 @@ out/
 .env
 .env.local
 /data/
-/profile/
+/profile/*
+!/profile/profile.yml
+!/profile/master_resume.md
+!/profile/career_story.md
+!/profile/story_bank.md
+!/profile/answer_bank.md
+!/profile/links.md
 /outputs/
 /jobs/raw/
 /jobs/normalized/

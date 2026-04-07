@@ -1,0 +1,27 @@
+name: 홍길동
+headline: 백엔드 중심의 문제 해결형 소프트웨어 엔지니어
+email: hong@example.com
+phone: 010-0000-0000
+location: 서울
+
+summary:
+  - Java, Spring Boot, TypeScript, React 기반 서비스 개발 경험
+  - 레거시 현대화, 업무 시스템 개선, 운영 효율화 프로젝트 선호
+  - AI/AX, 데이터 활용, 자동화 관점에서 문제를 정의하고 해결
+
+preferred_roles:
+  - 백엔드 엔지니어
+  - 풀스택 엔지니어
+  - 플랫폼 엔지니어
+
+preferred_domains:
+  - 업무 시스템
+  - 물류
+  - 커머스
+  - 핀테크
+  - AI/AX
+
+job_search_notes:
+  - 서울, 판교, 경기권 우선
+  - 중견 이상 또는 성장 단계 스타트업 선호
+  - 신입 한정 포지션은 제외
