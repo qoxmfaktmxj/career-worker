@@ -22,6 +22,45 @@ export interface FilterResult {
   reason?: string;
 }
 
+export const DEFAULT_FILTER_CONFIG: FilterConfig = {
+  include_keywords: [
+    "Java",
+    "Spring",
+    "백엔드",
+    "풀스택",
+    "React",
+    "JavaScript",
+    "TypeScript",
+    "Node",
+    "Python",
+    "PostgreSQL",
+    "Oracle",
+    "AI",
+    "AX",
+    "DX",
+    "디지털전환",
+    "현대화",
+    "클라우드전환",
+    "레거시현대화",
+    "AI활용",
+    "AI도입",
+    "생성형AI",
+    "업무시스템",
+    "ERP",
+    "MES",
+    "SCM",
+    "물류",
+    "커머스",
+    "핀테크",
+  ],
+  exclude_keywords: ["신입만", "신입 한정", "인턴만"],
+  locations: ["서울", "판교", "경기", "재택", "원격"],
+  exclude_company_sizes: ["소기업", "중소기업"],
+  min_employee_count: 100,
+  allow_startup: true,
+  exclude_entry_only: true,
+};
+
 const GAME_KEYWORDS = ["게임"];
 const AX_DX_KEYWORDS = [
   "AI",
