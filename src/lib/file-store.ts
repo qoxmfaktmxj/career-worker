@@ -7,16 +7,31 @@ function ensureDir(dir: string): void {
   }
 }
 
+function resolveBaseDir(configured: string | undefined, fallbackDir: string): string {
+  if (!configured) {
+    return path.join(/* turbopackIgnore: true */ process.cwd(), fallbackDir);
+  }
+
+  if (path.isAbsolute(configured)) {
+    return configured;
+  }
+
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    configured.replace(/^[.][\\/]/, "")
+  );
+}
+
 function jobsDir(): string {
-  return process.env.JOBS_DIR || "./jobs";
+  return resolveBaseDir(process.env.JOBS_DIR, "jobs");
 }
 
 function outputsDir(): string {
-  return process.env.OUTPUTS_DIR || "./outputs";
+  return resolveBaseDir(process.env.OUTPUTS_DIR, "outputs");
 }
 
 function profileDir(): string {
-  return process.env.PROFILE_DIR || "./profile";
+  return resolveBaseDir(process.env.PROFILE_DIR, "profile");
 }
 
 export function saveRawJob(jobId: string, content: string): string {

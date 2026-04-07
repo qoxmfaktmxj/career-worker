@@ -100,7 +100,7 @@ export async function callOpenClaw(
 
 export function loadPromptTemplate(promptName: string): string {
   const promptPath = path.join(
-    process.cwd(),
+    /* turbopackIgnore: true */ process.cwd(),
     "src",
     "prompts",
     `${promptName}.md`

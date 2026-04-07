@@ -4,12 +4,29 @@ import path from "path";
 
 let db: Database.Database | null = null;
 
+function resolveDataDir(): string {
+  const configured = process.env.DATA_DIR;
+
+  if (!configured) {
+    return path.join(/* turbopackIgnore: true */ process.cwd(), "data");
+  }
+
+  if (path.isAbsolute(configured)) {
+    return configured;
+  }
+
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    configured.replace(/^[.][\\/]/, "")
+  );
+}
+
 export function getDb(): Database.Database {
   if (db) {
     return db;
   }
 
-  const dataDir = process.env.DATA_DIR || "./data";
+  const dataDir = resolveDataDir();
   const dbName = process.env.DB_NAME || "career.db";
   const dbPath = path.join(dataDir, dbName);
 
