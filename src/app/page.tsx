@@ -53,8 +53,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="flex items-center gap-4 bg-[#0a0a0a] px-10 py-8 text-white">
-        <h1 className="font-heading text-[26px] font-semibold">
+      <section className="flex items-center gap-4 bg-[#0a0a0a] px-8 py-6 text-white">
+        <h1 className="font-heading text-[22px] font-semibold">
           오늘 공고와 대기 작업
         </h1>
         <div className="flex-1" />
@@ -67,7 +67,7 @@ export default function DashboardPage() {
         </button>
       </section>
 
-      <section className="grid gap-6 px-10 py-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <section className="grid gap-6 px-8 py-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard label="전체 수집 공고" value={stats.total} color="blue" />

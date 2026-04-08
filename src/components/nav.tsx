@@ -62,12 +62,13 @@ export function Nav() {
         </nav>
 
         <div className="mt-auto border-t border-[var(--border)] px-5 py-4">
-          <p className="font-caption text-[11px] leading-5 text-[var(--muted-foreground)]">
-            개인용 채용 워크스페이스
+          <p className="font-caption text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+            LOCAL MODE
+          </p>
+          <p className="mt-2 text-[11px] leading-5 text-[var(--muted-foreground)]">
+            연결 사용이 기본으로 꺼져
             <br />
-            필요한 공고만 남기고,
-            <br />
-            결과를 차분히 정리합니다.
+            있는 작업 모드입니다.
           </p>
         </div>
       </div>

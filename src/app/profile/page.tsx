@@ -23,12 +23,12 @@ const TABS = [
   },
   {
     key: "story_bank.md",
-    label: "스토리 매핑",
+    label: "스코어 맵핑",
     description: "면접과 자기소개서에 재사용할 사례를 쌓아 둡니다.",
   },
   {
     key: "answer_bank.md",
-    label: "답변 메모",
+    label: "날짜 메모",
     description: "자주 쓰는 답변 초안을 주제별로 보관합니다.",
   },
   {
@@ -104,20 +104,20 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="bg-[#0a0a0a] px-10 py-8 text-white">
-        <h1 className="font-heading text-[26px] font-semibold">원본 문서</h1>
+      <section className="bg-[#0a0a0a] px-12 py-10 text-white">
+        <h1 className="font-heading text-[28px] font-bold">원본 문서</h1>
         <p className="mt-2 text-sm text-[#999999]">
           평가와 생성에 쓰는 기준 정보입니다.
         </p>
       </section>
 
-      <div className="border-b border-[var(--border)] px-10">
-        <div className="flex flex-wrap gap-8">
+      <div className="border-b border-[var(--border)] px-12">
+        <div className="flex flex-wrap gap-0">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`border-b-2 px-0 py-4 text-sm transition ${
+              className={`border-b-2 px-4 py-3 text-sm transition ${
                 activeTab === tab.key
                   ? "border-[var(--accent)] text-[var(--foreground)]"
                   : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -129,15 +129,12 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <section className="px-10 py-8">
+      <section className="px-12 py-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-heading text-[18px] font-semibold text-[var(--foreground)]">
+            <h2 className="font-heading text-[20px] font-semibold text-[var(--foreground)]">
               {activeDoc.label}
             </h2>
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              {activeDoc.description}
-            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -149,30 +146,32 @@ export default function ProfilePage() {
               }
               className="font-data text-sm text-[var(--accent)]"
             >
-              {activeDoc.key}
+              {activeTab === "profile.yml" ? "profile.md" : activeDoc.key}
             </button>
-            <button
-              onClick={() => void save()}
-              disabled={saving}
-              className="rounded-[4px] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "저장 중" : "저장"}
-            </button>
+            {editingProfile || activeTab !== "profile.yml" ? (
+              <button
+                onClick={() => void save()}
+                disabled={saving}
+                className="rounded-[4px] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "저장 중" : "저장"}
+              </button>
+            ) : null}
           </div>
         </div>
 
         <div className="mt-6">
           {showProfileSummary && profileSummary.length > 0 ? (
-            <div className="overflow-hidden rounded-[4px] border border-[var(--border)]">
+            <div className="divide-y divide-[var(--border)]">
               {profileSummary.map((item) => (
                 <div
                   key={item.key}
-                  className="grid grid-cols-[180px_minmax(0,1fr)] border-b border-[var(--border)] last:border-b-0"
+                  className="grid grid-cols-[180px_minmax(0,1fr)]"
                 >
-                  <div className="px-4 py-5 text-sm text-[var(--muted-foreground)]">
+                  <div className="py-[14px] pr-6 text-[13px] text-[var(--muted-foreground)]">
                     {item.key}
                   </div>
-                  <div className="px-4 py-5 text-sm leading-7 text-[var(--foreground)]">
+                  <div className="font-data py-[14px] text-[13px] leading-7 text-[var(--foreground)]">
                     {item.value}
                   </div>
                 </div>

@@ -34,7 +34,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-6 py-12 text-white">
-      <div className="w-full max-w-[342px]">
+      <div className="w-full max-w-[400px]">
         <form
           onSubmit={handleSubmit}
           className="overflow-hidden rounded-[4px] bg-white text-[var(--foreground)] shadow-[0_18px_48px_rgba(0,0,0,0.24)]"
@@ -44,15 +44,17 @@ export default function LoginPage() {
             <div className="w-1/3 bg-[#0a0a0a]" />
             <div className="w-1/3 bg-[var(--accent-soft)]" />
           </div>
-          <div className="px-9 py-8">
-            <h1 className="font-heading text-center text-[22px] font-semibold text-[var(--foreground)]">
+          <div className="px-9 pb-4 pt-10">
+            <h1 className="font-heading text-center text-[24px] font-bold text-[var(--foreground)]">
               채용 작업실
             </h1>
             <p className="mt-3 text-center text-[14px] text-[var(--muted-foreground)]">
               작업실 잠금 해제
             </p>
+          </div>
 
-            <label className="mt-10 block text-sm text-[var(--muted-foreground)]">
+          <div className="px-9 pb-9 pt-2">
+            <label className="block text-sm text-[var(--muted-foreground)]">
               비밀번호
             </label>
             <input
@@ -60,14 +62,14 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="비밀번호를 입력하세요"
-              className="mt-3 h-10 w-full rounded-[4px] border border-[var(--border)] px-4 text-[14px] outline-none placeholder:text-[#c0c0c0] focus:border-[var(--accent)]"
+              className="mt-3 h-11 w-full rounded-[4px] border border-[var(--border)] px-4 text-[14px] outline-none placeholder:text-[#c0c0c0] focus:border-[var(--accent)]"
               autoFocus
             />
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 h-10 w-full rounded-[4px] bg-[var(--accent)] text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 h-11 w-full rounded-[4px] border border-transparent bg-[#4a9fd8] text-sm font-medium text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "작업실 여는 중" : "작업실 열기"}
             </button>
