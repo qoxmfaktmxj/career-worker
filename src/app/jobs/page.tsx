@@ -78,16 +78,16 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="bg-[#0a0a0a] px-8 py-7 text-white">
-        <h1 className="font-heading text-[28px] font-semibold">공고 검토</h1>
+      <section className="bg-[#0a0a0a] px-10 py-8 text-white">
+        <h1 className="font-heading text-[26px] font-semibold">공고 검토</h1>
         <p className="mt-2 text-sm text-[#999999]">
           필터를 설정해 원하는 공고를 찾습니다.
         </p>
       </section>
 
-      <section className="grid min-h-[calc(100vh-92px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_220px]">
+      <section className="grid min-h-[calc(100vh-94px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_220px]">
         <div className="border-r border-[var(--border)]">
-          <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-6 py-5">
+          <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-5 py-4">
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
@@ -128,10 +128,10 @@ export default function JobsPage() {
             </form>
           </div>
 
-          <div className="px-6 py-6">
+          <div className="px-5 py-5">
             <JobTable
               jobs={jobs}
-              emptyTitle="조건에 맞는 공고가 없습니다."
+              emptyTitle="주간에 해당하는 공고가 없습니다."
               emptyDescription="필터 조건을 변경하거나 다른 기준을 선택해 보세요."
             />
           </div>

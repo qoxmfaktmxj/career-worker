@@ -27,12 +27,6 @@ const CHANNEL_LABELS: Record<string, string> = {
   remember: "리멤버",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  completed: "완료",
-  failed: "실패",
-  running: "실행 중",
-};
-
 async function fetchSourcesPageData(): Promise<{
   sources: Source[];
   history: ScanHistory[];
@@ -104,9 +98,9 @@ export default function SourcesPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="flex items-center gap-4 bg-[#0a0a0a] px-8 py-7 text-white">
+      <section className="flex items-center gap-4 bg-[#0a0a0a] px-10 py-8 text-white">
         <div>
-          <h1 className="font-heading text-[28px] font-semibold">키워드 소스</h1>
+          <h1 className="font-heading text-[26px] font-semibold">키워드 소스</h1>
           <p className="mt-2 text-sm text-[#999999]">
             수집 대상과 키워드를 관리합니다.
           </p>
@@ -121,7 +115,7 @@ export default function SourcesPage() {
       </section>
 
       {showAdd ? (
-        <section className="border-b border-[var(--border)] px-8 py-5">
+        <section className="border-b border-[var(--border)] px-10 py-5">
           <div className="grid gap-3 lg:grid-cols-3">
             <select
               value={form.channel}
@@ -163,20 +157,25 @@ export default function SourcesPage() {
         </section>
       ) : null}
 
-      <section className="px-8 py-5">
-        <div className="overflow-hidden rounded-[4px] border border-[var(--border)] bg-white">
+      <section className="px-10 py-5">
+        <div className="overflow-hidden bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border)] bg-white text-left text-[12px] text-[var(--muted-foreground)]">
               <tr>
+                <th className="px-5 py-3 font-medium">#</th>
                 <th className="px-5 py-3 font-medium">이름</th>
                 <th className="px-5 py-3 font-medium">채널</th>
-                <th className="px-5 py-3 font-medium">실행기간</th>
-                <th className="px-5 py-3 font-medium">상태</th>
+                <th className="px-5 py-3 font-medium">시행기간</th>
+                <th className="px-5 py-3 font-medium">교정</th>
+                <th className="px-5 py-3 font-medium">활성</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {sources.map((source) => (
+              {sources.map((source, index) => (
                 <tr key={source.id}>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                    {index + 1}
+                  </td>
                   <td className="px-5 py-4 font-medium text-[var(--foreground)]">
                     {source.name}
                   </td>
@@ -186,6 +185,7 @@ export default function SourcesPage() {
                   <td className="px-5 py-4 text-[var(--muted-foreground)]">
                     {source.last_scan || "없음"}
                   </td>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">완료</td>
                   <td className="px-5 py-4 text-[var(--accent)]">
                     {source.enabled ? "ON" : "OFF"}
                   </td>
@@ -196,7 +196,7 @@ export default function SourcesPage() {
         </div>
       </section>
 
-      <section className="px-8 pb-8">
+      <section className="px-10 pb-8">
         <div>
           <h2 className="font-heading text-[18px] font-semibold text-[var(--foreground)]">
             최근 스캔 이력
@@ -206,7 +206,7 @@ export default function SourcesPage() {
           </p>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-[4px] border border-[var(--border)] bg-white">
+        <div className="mt-6 overflow-hidden bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border)] bg-white text-left text-[12px] text-[var(--muted-foreground)]">
               <tr>
@@ -234,9 +234,7 @@ export default function SourcesPage() {
                   <td className="px-5 py-4 text-[var(--muted-foreground)]">
                     {item.status === "failed" ? "1" : "0"}
                   </td>
-                  <td className="px-5 py-4 text-[var(--accent)]">
-                    {STATUS_LABELS[item.status] ?? item.status}
-                  </td>
+                  <td className="px-5 py-4 text-[var(--accent)]">상세 보기</td>
                 </tr>
               ))}
             </tbody>

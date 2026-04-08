@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import yaml from "js-yaml";
 
 import { MarkdownEditor } from "@/components/markdown-editor";
 
@@ -41,6 +42,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState(TABS[0].key);
   const [content, setContent] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   useEffect(() => {
     void fetch("/api/profile")
@@ -68,17 +70,48 @@ export default function ProfilePage() {
   };
 
   const activeDoc = TABS.find((tab) => tab.key === activeTab) ?? TABS[0];
+  const showProfileSummary = activeTab === "profile.yml" && !editingProfile;
+  const profileSummary = (() => {
+    if (!content["profile.yml"]) {
+      return [];
+    }
+
+    try {
+      const parsed = yaml.load(content["profile.yml"]) as Record<string, unknown>;
+      const orderedKeys = [
+        "name",
+        "headline",
+        "email",
+        "phone",
+        "location",
+        "summary",
+        "preferred_roles",
+        "preferred_domains",
+      ];
+
+      return orderedKeys
+        .filter((key) => key in parsed)
+        .map((key) => ({
+          key,
+          value: Array.isArray(parsed[key])
+            ? (parsed[key] as unknown[]).join(", ")
+            : String(parsed[key] ?? ""),
+        }));
+    } catch {
+      return [];
+    }
+  })();
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="bg-[#0a0a0a] px-8 py-7 text-white">
-        <h1 className="font-heading text-[28px] font-semibold">원본 문서</h1>
+      <section className="bg-[#0a0a0a] px-10 py-8 text-white">
+        <h1 className="font-heading text-[26px] font-semibold">원본 문서</h1>
         <p className="mt-2 text-sm text-[#999999]">
           평가와 생성에 쓰는 기준 정보입니다.
         </p>
       </section>
 
-      <div className="border-b border-[var(--border)] px-8">
+      <div className="border-b border-[var(--border)] px-10">
         <div className="flex flex-wrap gap-8">
           {TABS.map((tab) => (
             <button
@@ -96,7 +129,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <section className="px-8 py-7">
+      <section className="px-10 py-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-heading text-[18px] font-semibold text-[var(--foreground)]">
@@ -107,7 +140,17 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-data text-sm text-[var(--accent)]">{activeDoc.key}</span>
+            <button
+              type="button"
+              onClick={() =>
+                activeTab === "profile.yml"
+                  ? setEditingProfile((current) => !current)
+                  : undefined
+              }
+              className="font-data text-sm text-[var(--accent)]"
+            >
+              {activeDoc.key}
+            </button>
             <button
               onClick={() => void save()}
               disabled={saving}
@@ -119,12 +162,30 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-6">
-          <MarkdownEditor
-            value={content[activeTab] || ""}
-            onChange={(value) =>
-              setContent((current) => ({ ...current, [activeTab]: value }))
-            }
-          />
+          {showProfileSummary && profileSummary.length > 0 ? (
+            <div className="overflow-hidden rounded-[4px] border border-[var(--border)]">
+              {profileSummary.map((item) => (
+                <div
+                  key={item.key}
+                  className="grid grid-cols-[180px_minmax(0,1fr)] border-b border-[var(--border)] last:border-b-0"
+                >
+                  <div className="px-4 py-5 text-sm text-[var(--muted-foreground)]">
+                    {item.key}
+                  </div>
+                  <div className="px-4 py-5 text-sm leading-7 text-[var(--foreground)]">
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <MarkdownEditor
+              value={content[activeTab] || ""}
+              onChange={(value) =>
+                setContent((current) => ({ ...current, [activeTab]: value }))
+              }
+            />
+          )}
         </div>
       </section>
     </div>

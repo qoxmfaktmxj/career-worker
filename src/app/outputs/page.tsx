@@ -14,14 +14,16 @@ interface OutputRow {
 
 const FILTERS = [
   { key: "", label: "전체" },
-  { key: "answer_pack", label: "요약 팩" },
+  { key: "answer_pack", label: "요약 백" },
   { key: "resume", label: "질문 의견서" },
+  { key: "cover_letter", label: "기본 레터" },
   { key: "recruiter_reply", label: "손고침 설정" },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
-  answer_pack: "답변 팩",
-  resume: "맞춤 이력서",
+  answer_pack: "요약 백",
+  resume: "질문 의견서",
+  cover_letter: "기본 레터",
   recruiter_reply: "리크루터 답장",
 };
 
@@ -46,14 +48,14 @@ export default function OutputsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="bg-[#0a0a0a] px-8 py-7 text-white">
-        <h1 className="font-heading text-[28px] font-semibold">아웃풋</h1>
+      <section className="bg-[#0a0a0a] px-10 py-8 text-white">
+        <h1 className="font-heading text-[26px] font-semibold">아웃풋</h1>
         <p className="mt-2 text-sm text-[#999999]">
           생성된 답변과 초안을 관리합니다.
         </p>
       </section>
 
-      <div className="border-b border-[var(--border)] px-8">
+      <div className="border-b border-[var(--border)] px-10">
         <div className="flex flex-wrap gap-8">
           {FILTERS.map((filter) => (
             <button
@@ -71,8 +73,8 @@ export default function OutputsPage() {
         </div>
       </div>
 
-      <div className="px-8 py-6">
-        <div className="overflow-hidden rounded-[4px] border border-[var(--border)] bg-white">
+      <div className="px-10 py-6">
+        <div className="overflow-hidden bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border)] bg-white text-left text-[12px] text-[var(--muted-foreground)]">
               <tr>
