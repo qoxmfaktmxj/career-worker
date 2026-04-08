@@ -156,6 +156,12 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
+다른 포트로 띄우고 싶으면 인자를 그대로 넘기면 됩니다.
+
+```bash
+npm run dev -- --port 3200
+```
+
 기본 접속 주소:
 
 - [http://localhost:3010](http://localhost:3010)
@@ -197,6 +203,7 @@ AI 액션은 프롬프트 템플릿과 `openclaw` CLI를 사용합니다.
 주의:
 
 - `openclaw`가 설치되지 않으면 AI 액션은 동작하지 않습니다.
+- `openclaw`가 없으면 공고 상세에서 AI 버튼이 비활성화되고 안내 문구가 표시됩니다.
 - 자동 스캔만으로 AI 평가가 연속 실행되지는 않습니다. 공고 상세에서 수동 실행합니다.
 
 ## 문서
