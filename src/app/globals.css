@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --surface: #ffffff;
+  --surface-strong: #0a0a0a;
+  --border: #eef0f2;
+  --muted-foreground: #666666;
+  --muted-foreground-soft: #999999;
+  --accent: #4a9fd8;
+  --accent-soft: #b3d9f0;
 }
 
 @theme inline {
@@ -19,11 +26,21 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  font-family:
+    var(--font-sans),
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(74, 159, 216, 0.22);
 }
 
 button,
@@ -31,4 +48,34 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+input,
+select,
+textarea {
+  color: inherit;
+}
+
+.font-heading {
+  font-family:
+    var(--font-heading),
+    var(--font-sans),
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    sans-serif;
+}
+
+.font-caption {
+  font-family:
+    var(--font-caption),
+    Georgia,
+    serif;
+}
+
+.font-data {
+  font-family:
+    var(--font-mono),
+    "SFMono-Regular",
+    Consolas,
+    monospace;
 }

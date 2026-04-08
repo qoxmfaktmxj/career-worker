@@ -21,6 +21,18 @@ interface ScanHistory {
   status: string;
 }
 
+const CHANNEL_LABELS: Record<string, string> = {
+  saramin: "사람인",
+  jobkorea: "잡코리아",
+  remember: "리멤버",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  completed: "완료",
+  failed: "실패",
+  running: "실행 중",
+};
+
 async function fetchSourcesPageData(): Promise<{
   sources: Source[];
   history: ScanHistory[];
@@ -91,33 +103,32 @@ export default function SourcesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-white">
+      <section className="flex items-center gap-4 bg-[#0a0a0a] px-8 py-7 text-white">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-            수집원 관리
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            채널별 수집 설정과 최근 스캔 결과를 확인합니다.
+          <h1 className="font-heading text-[28px] font-semibold">키워드 소스</h1>
+          <p className="mt-2 text-sm text-[#999999]">
+            수집 대상과 키워드를 관리합니다.
           </p>
         </div>
+        <div className="flex-1" />
         <button
           onClick={() => setShowAdd((current) => !current)}
-          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
+          className="rounded-[4px] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
         >
-          {showAdd ? "닫기" : "+ 수집원 추가"}
+          {showAdd ? "닫기" : "수집원 추가"}
         </button>
-      </div>
+      </section>
 
       {showAdd ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="border-b border-[var(--border)] px-8 py-5">
           <div className="grid gap-3 lg:grid-cols-3">
             <select
               value={form.channel}
               onChange={(event) =>
                 setForm((current) => ({ ...current, channel: event.target.value }))
               }
-              className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-300"
+              className="h-9 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
             >
               <option value="saramin">사람인</option>
               <option value="jobkorea">잡코리아</option>
@@ -128,8 +139,8 @@ export default function SourcesPage() {
               onChange={(event) =>
                 setForm((current) => ({ ...current, name: event.target.value }))
               }
-              placeholder="예: 사람인 백엔드 서울"
-              className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-300"
+              placeholder="예: 백엔드 채용"
+              className="h-9 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
             />
             <input
               value={form.keywords}
@@ -139,79 +150,93 @@ export default function SourcesPage() {
                   keywords: event.target.value,
                 }))
               }
-              placeholder="키워드, 쉼표 구분"
-              className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-300"
+              placeholder="키워드, 쉼표로 구분"
+              className="h-9 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
             />
           </div>
           <button
             onClick={() => void addSource()}
-            className="mt-4 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-500"
+            className="mt-4 rounded-[4px] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
           >
             저장
           </button>
         </section>
       ) : null}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">이름</th>
-              <th className="px-4 py-3 font-medium">채널</th>
-              <th className="px-4 py-3 font-medium">마지막 스캔</th>
-              <th className="px-4 py-3 font-medium">상태</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sources.map((source) => (
-              <tr key={source.id} className="border-t border-slate-100">
-                <td className="px-4 py-3 font-medium text-slate-900">
-                  {source.name}
-                </td>
-                <td className="px-4 py-3 text-slate-600">{source.channel}</td>
-                <td className="px-4 py-3 text-slate-600">
-                  {source.last_scan || "없음"}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {source.enabled ? "활성" : "비활성"}
-                </td>
+      <section className="px-8 py-5">
+        <div className="overflow-hidden rounded-[4px] border border-[var(--border)] bg-white">
+          <table className="w-full text-sm">
+            <thead className="border-b border-[var(--border)] bg-white text-left text-[12px] text-[var(--muted-foreground)]">
+              <tr>
+                <th className="px-5 py-3 font-medium">이름</th>
+                <th className="px-5 py-3 font-medium">채널</th>
+                <th className="px-5 py-3 font-medium">실행기간</th>
+                <th className="px-5 py-3 font-medium">상태</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {sources.map((source) => (
+                <tr key={source.id}>
+                  <td className="px-5 py-4 font-medium text-[var(--foreground)]">
+                    {source.name}
+                  </td>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                    {CHANNEL_LABELS[source.channel] ?? source.channel}
+                  </td>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                    {source.last_scan || "없음"}
+                  </td>
+                  <td className="px-5 py-4 text-[var(--accent)]">
+                    {source.enabled ? "ON" : "OFF"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section className="space-y-3">
+      <section className="px-8 pb-8">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">최근 스캔 이력</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            최근 실행된 스캔의 수집 및 필터링 결과입니다.
+          <h2 className="font-heading text-[18px] font-semibold text-[var(--foreground)]">
+            최근 스캔 이력
+          </h2>
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+            스캔 실행 결과를 확인합니다.
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-6 overflow-hidden rounded-[4px] border border-[var(--border)] bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-500">
+            <thead className="border-b border-[var(--border)] bg-white text-left text-[12px] text-[var(--muted-foreground)]">
               <tr>
-                <th className="px-4 py-3 font-medium">시각</th>
-                <th className="px-4 py-3 font-medium">수집원</th>
-                <th className="px-4 py-3 font-medium">수집</th>
-                <th className="px-4 py-3 font-medium">신규</th>
-                <th className="px-4 py-3 font-medium">통과</th>
-                <th className="px-4 py-3 font-medium">상태</th>
+                <th className="px-5 py-3 font-medium">날짜</th>
+                <th className="px-5 py-3 font-medium">소스명</th>
+                <th className="px-5 py-3 font-medium">건수</th>
+                <th className="px-5 py-3 font-medium">신규</th>
+                <th className="px-5 py-3 font-medium">에러</th>
+                <th className="px-5 py-3 font-medium">작업</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[var(--border)]">
               {history.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 text-slate-600">{item.started_at}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                <tr key={item.id}>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                    {item.started_at.split("T")[0] ?? item.started_at}
+                  </td>
+                  <td className="px-5 py-4 font-medium text-[var(--foreground)]">
                     {item.source_name}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{item.total_found}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.new_count}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.passed_count}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.status}</td>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                    {item.total_found}
+                  </td>
+                  <td className="px-5 py-4 text-[var(--accent)]">{item.new_count}</td>
+                  <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                    {item.status === "failed" ? "1" : "0"}
+                  </td>
+                  <td className="px-5 py-4 text-[var(--accent)]">
+                    {STATUS_LABELS[item.status] ?? item.status}
+                  </td>
                 </tr>
               ))}
             </tbody>

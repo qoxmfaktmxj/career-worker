@@ -52,47 +52,71 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2rem] bg-slate-950 px-6 py-8 text-white shadow-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-cyan-200">
-              Overview
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-              오늘 처리할 채용 작업을 한 번에 확인합니다.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-              새 공고 수집부터 적합도 평가, 초안 생성까지 현재 파이프라인 상태를
-              대시보드에서 확인할 수 있습니다.
-            </p>
+    <div className="min-h-screen bg-white">
+      <section className="flex items-center gap-4 bg-[#0a0a0a] px-8 py-7 text-white">
+        <h1 className="font-heading text-[28px] font-semibold">
+          오늘 공고와 대기 작업
+        </h1>
+        <div className="flex-1" />
+        <button
+          onClick={handleScan}
+          disabled={scanning}
+          className="rounded-[4px] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {scanning ? "스캔 중" : "전체 스캔"}
+        </button>
+      </section>
+
+      <section className="grid gap-6 px-8 py-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="space-y-6">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="전체 수집 공고" value={stats.total} color="blue" />
+            <StatCard label="신규 등록 공고" value={stats.new_jobs} color="green" />
+            <StatCard label="우선 검토 공고" value={stats.matched} color="yellow" />
+            <StatCard label="기한 임박 공고" value={stats.deadline_soon} color="red" />
+          </section>
+
+          <section className="space-y-3">
+            <div>
+              <h2 className="font-heading text-[18px] font-semibold text-[var(--foreground)]">
+                우선 검토 공고
+              </h2>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                빠른 판별과 결정을 위한 공고입니다.
+              </p>
+            </div>
+            <JobTable
+              jobs={matchedJobs}
+              emptyTitle="검토할 공고가 없습니다"
+              emptyDescription=""
+            />
+          </section>
+        </div>
+
+        <aside className="rounded-[4px] border border-[var(--border)] bg-white p-5">
+          <h2 className="font-heading text-[16px] font-semibold text-[var(--foreground)]">
+            작업 안내
+          </h2>
+          <div className="my-4 h-px bg-[var(--border)]" />
+          <div className="space-y-4 text-sm text-[var(--muted-foreground)]">
+            <div className="flex gap-3">
+              <span className="font-data text-[var(--accent)]">1</span>
+              <p>수집된 공고를 확인하세요</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-data text-[var(--accent)]">2</span>
+              <p>우선 검토 대상을 분류하세요</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-data text-[var(--accent)]">3</span>
+              <p>기한 임박 공고를 처리하세요</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-data text-[var(--accent)]">4</span>
+              <p>완료된 작업을 기록하세요</p>
+            </div>
           </div>
-
-          <button
-            onClick={handleScan}
-            disabled={scanning}
-            className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {scanning ? "스캔 실행 중..." : "스캔 실행"}
-          </button>
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="전체 수집 공고" value={stats.total} color="blue" />
-        <StatCard label="신규 패스 공고" value={stats.new_jobs} color="green" />
-        <StatCard label="적합 판정 공고" value={stats.matched} color="yellow" />
-        <StatCard label="마감 임박 공고" value={stats.deadline_soon} color="red" />
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">적합 공고</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            AI 평가 기준으로 우선 검토할 공고입니다.
-          </p>
-        </div>
-        <JobTable jobs={matchedJobs} />
+        </aside>
       </section>
     </div>
   );

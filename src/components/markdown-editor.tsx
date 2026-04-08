@@ -15,7 +15,7 @@ export function MarkdownEditor({
     <textarea
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className={`min-h-[420px] w-full resize-y rounded-3xl border border-slate-200 bg-white p-5 font-mono text-sm leading-7 text-slate-800 shadow-sm outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100 ${className}`}
+      className={`font-data min-h-[560px] w-full resize-y rounded-[4px] border border-[var(--border)] bg-white p-6 text-[14px] leading-7 text-[var(--foreground)] outline-none focus:border-[var(--accent)] ${className}`}
       spellCheck={false}
     />
   );
