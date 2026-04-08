@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { DEFAULT_FILTER_CONFIG } from "@/lib/filters";
 import { runScan } from "@/scanners/orchestrator";
+import {
+  formatMissingScannerConfigMessage,
+  getMissingScannerConfig,
+} from "@/scanners/requirements";
 
 export async function POST(
   _: NextRequest,
@@ -19,6 +23,21 @@ export async function POST(
   }
 
   const config = JSON.parse(source.config) as Record<string, unknown>;
+  const missingConfig = getMissingScannerConfig(source.channel);
+
+  if (missingConfig) {
+    return NextResponse.json(
+      {
+        error: formatMissingScannerConfigMessage(
+          source.channel,
+          missingConfig.missingLabels
+        ),
+        missing_config: missingConfig.missingLabels,
+        missing_env: missingConfig.missingEnv,
+      },
+      { status: 400 }
+    );
+  }
 
   try {
     const result = await runScan(

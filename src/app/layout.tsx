@@ -32,7 +32,7 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: "Career Worker",
-  description: "개인 채용 워크스페이스. 공고를 모으고, 판단하고, 초안을 만든다.",
+  description: "채용 워크스페이스. 공고 수집, 판단, 초안 작성.",
 };
 
 export default function RootLayout({

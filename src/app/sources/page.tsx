@@ -104,9 +104,6 @@ export default function SourcesPage() {
       <section className="flex items-center gap-4 bg-[#0a0a0a] px-10 py-8 text-white">
         <div>
           <h1 className="font-heading text-[28px] font-bold">키워드 소스</h1>
-          <p className="mt-2 text-sm text-[#999999]">
-            수집 대상과 키워드를 관리합니다.
-          </p>
         </div>
         <div className="flex-1" />
         <button

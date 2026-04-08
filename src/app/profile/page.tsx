@@ -106,9 +106,6 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-white">
       <section className="bg-[#0a0a0a] px-12 py-10 text-white">
         <h1 className="font-heading text-[28px] font-bold">원본 문서</h1>
-        <p className="mt-2 text-sm text-[#999999]">
-          평가와 생성에 쓰는 기준 정보입니다.
-        </p>
       </section>
 
       <div className="border-b border-[var(--border)] px-12">

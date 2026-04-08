@@ -34,6 +34,7 @@ describe("Scan API routes", () => {
 
     process.env.DATA_DIR = TEST_DATA_DIR;
     process.env.DB_NAME = "test-scan-routes.db";
+    delete process.env.SARAMIN_API_KEY;
   });
 
   afterEach(async () => {
@@ -168,6 +169,8 @@ describe("Scan API routes", () => {
   });
 
   it("runs enabled scan sources and returns per-source results", async () => {
+    process.env.SARAMIN_API_KEY = "test-key";
+
     const { getDb } = await import("@/lib/db");
     const db = getDb();
     db.prepare("INSERT INTO sources (channel, name, config, enabled) VALUES (?, ?, ?, ?)")
@@ -213,7 +216,53 @@ describe("Scan API routes", () => {
     ]);
   });
 
+  it("returns missing config details when a required scanner key is absent", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare("INSERT INTO sources (channel, name, config, enabled) VALUES (?, ?, ?, ?)")
+      .run("saramin", "Saramin", JSON.stringify({ keywords: ["java"] }), 1);
+    db.prepare("INSERT INTO sources (channel, name, config, enabled) VALUES (?, ?, ?, ?)")
+      .run("jobkorea", "JobKorea", JSON.stringify({ keywords: ["react"] }), 1);
+
+    runScanMock.mockResolvedValueOnce({
+      total_found: 2,
+      new_count: 1,
+      duplicate_count: 0,
+      filtered_count: 1,
+      passed_count: 1,
+    });
+
+    const runRoute = await import("@/app/api/scan/run/route");
+    const response = await runRoute.POST();
+    const body = (await response.json()) as {
+      results: Array<Record<string, unknown>>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(runScanMock).toHaveBeenCalledTimes(1);
+    expect(body.results).toEqual([
+      {
+        source_id: 1,
+        channel: "saramin",
+        error: "사람인 API 키가 없습니다.",
+        missing_config: ["사람인 API 키"],
+        missing_env: ["SARAMIN_API_KEY"],
+      },
+      {
+        source_id: 2,
+        channel: "jobkorea",
+        total_found: 2,
+        new_count: 1,
+        duplicate_count: 0,
+        filtered_count: 1,
+        passed_count: 1,
+      },
+    ]);
+  });
+
   it("runs a single source scan and returns 404 for a missing source", async () => {
+    process.env.SARAMIN_API_KEY = "test-key";
+
     const { getDb } = await import("@/lib/db");
     const db = getDb();
     db.prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
@@ -257,7 +306,30 @@ describe("Scan API routes", () => {
     expect(await notFoundResponse.json()).toEqual({ error: "Source not found" });
   });
 
+  it("returns 400 when a single source is missing required scanner config", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
+      .run("saramin", "Saramin", JSON.stringify({ keywords: ["java"] }));
+
+    const runSourceRoute = await import("@/app/api/scan/run/[sourceId]/route");
+    const response = await runSourceRoute.POST(
+      makeJsonRequest("http://localhost/api/scan/run/1", "POST"),
+      { params: Promise.resolve({ sourceId: "1" }) }
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "사람인 API 키가 없습니다.",
+      missing_config: ["사람인 API 키"],
+      missing_env: ["SARAMIN_API_KEY"],
+    });
+    expect(runScanMock).not.toHaveBeenCalled();
+  });
+
   it("returns 500 json when a single source scan fails", async () => {
+    process.env.SARAMIN_API_KEY = "test-key";
+
     const { getDb } = await import("@/lib/db");
     const db = getDb();
     db.prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")

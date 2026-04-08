@@ -25,11 +25,6 @@ export function Nav() {
           <h1 className="font-heading text-[15px] font-semibold text-[var(--foreground)]">
             채용 작업실
           </h1>
-          <p className="font-caption mt-1 text-[11px] leading-5 text-[var(--muted-foreground)]">
-            공고를 모으고, 판단하고,
-            <br />
-            초안을 남기는 작업 공간
-          </p>
         </div>
 
         <nav className="flex-1 px-2 py-2">

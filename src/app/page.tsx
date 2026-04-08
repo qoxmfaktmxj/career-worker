@@ -13,6 +13,16 @@ interface Stats {
   expired: number;
 }
 
+interface ScanResultItem {
+  channel: string;
+  error?: string;
+  missing_config?: string[];
+}
+
+interface ScanRunResponse {
+  results?: ScanResultItem[];
+}
+
 const EMPTY_STATS: Stats = {
   total: 0,
   new_jobs: 0,
@@ -44,7 +54,40 @@ export default function DashboardPage() {
     setScanning(true);
 
     try {
-      await fetch("/api/scan/run", { method: "POST" });
+      const response = await fetch("/api/scan/run", { method: "POST" });
+      const body = (await response.json()) as ScanRunResponse;
+      const missingConfigResults = (body.results || []).filter(
+        (result) => (result.missing_config || []).length > 0
+      );
+
+      if (missingConfigResults.length > 0) {
+        if (
+          missingConfigResults.length === 1 &&
+          missingConfigResults[0].error === "사람인 API 키가 없습니다."
+        ) {
+          window.alert("사람인 API 키가 없습니다.");
+          await loadData();
+          return;
+        }
+
+        const lines = missingConfigResults.map((result) => {
+          if (result.error) {
+            return `- ${result.error}`;
+          }
+
+          return `- ${result.channel}: ${(result.missing_config || []).join(", ")}`;
+        });
+
+        window.alert(
+          [
+            "일부 수집원을 실행할 수 없습니다.",
+            "누락된 설정을 확인해 주세요.",
+            "",
+            ...lines,
+          ].join("\n")
+        );
+      }
+
       await loadData();
     } finally {
       setScanning(false);
@@ -81,9 +124,6 @@ export default function DashboardPage() {
               <h2 className="font-heading text-[18px] font-semibold text-[var(--foreground)]">
                 우선 검토 공고
               </h2>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                빠른 판별과 결정을 위한 공고입니다.
-              </p>
             </div>
             <JobTable
               jobs={matchedJobs}

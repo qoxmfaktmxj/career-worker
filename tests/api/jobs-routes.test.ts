@@ -10,7 +10,7 @@ const TEST_OUTPUTS_DIR = path.join(__dirname, "../../tmp/jobs-routes/outputs");
 
 function makeRequest(
   url: string,
-  method: "GET" | "PUT",
+  method: "GET" | "POST" | "PUT",
   body?: Record<string, unknown>
 ) {
   return new NextRequest(url, {
@@ -114,6 +114,77 @@ describe("Jobs API routes", () => {
 
     expect(statusJobs).toHaveLength(1);
     expect(statusJobs[0]?.job_id).toBe("JOB-003");
+  });
+
+  it("creates a manual job and persists raw JD content", async () => {
+    const jobsRoute = await import("@/app/api/jobs/route");
+
+    const createResponse = await jobsRoute.POST(
+      makeRequest("http://localhost/api/jobs", "POST", {
+        company: "Manual Corp",
+        position: "Platform Engineer",
+        rawText: "We build internal platform tooling.",
+        rawUrl: "https://example.com/manual-job",
+        location: "Seoul",
+        deadline: "2026-04-30",
+      })
+    );
+    const created = (await createResponse.json()) as { job_id: string };
+
+    expect(createResponse.status).toBe(201);
+    expect(created.job_id).toMatch(/^JOB-/);
+
+    const { getDb } = await import("@/lib/db");
+    const { readRawJob } = await import("@/lib/file-store");
+    const db = getDb();
+    const saved = db
+      .prepare(
+        `
+          SELECT job_id, source, company, position, location, deadline, raw_url, status
+          FROM jobs
+          WHERE job_id = ?
+        `
+      )
+      .get(created.job_id) as {
+      job_id: string;
+      source: string;
+      company: string;
+      position: string;
+      location: string;
+      deadline: string;
+      raw_url: string;
+      status: string;
+    };
+
+    expect(saved).toMatchObject({
+      job_id: created.job_id,
+      source: "manual",
+      company: "Manual Corp",
+      position: "Platform Engineer",
+      location: "Seoul",
+      deadline: "2026-04-30",
+      raw_url: "https://example.com/manual-job",
+      status: "passed",
+    });
+    expect(readRawJob(created.job_id)).toContain(
+      "We build internal platform tooling."
+    );
+  });
+
+  it("rejects manual job creation without required fields", async () => {
+    const jobsRoute = await import("@/app/api/jobs/route");
+
+    const response = await jobsRoute.POST(
+      makeRequest("http://localhost/api/jobs", "POST", {
+        company: "Manual Corp",
+        rawText: "",
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "company, position, rawText is required",
+    });
   });
 
   it("returns dashboard stats for current jobs", async () => {

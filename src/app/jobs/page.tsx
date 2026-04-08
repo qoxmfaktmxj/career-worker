@@ -80,9 +80,6 @@ export default function JobsPage() {
     <div className="min-h-screen bg-white">
       <section className="bg-[#0a0a0a] px-10 py-7 text-white">
         <h1 className="font-heading text-[28px] font-bold">공고 검토</h1>
-        <p className="mt-2 text-sm text-[#999999]">
-          필터를 설정해 원하는 공고를 찾습니다.
-        </p>
       </section>
 
       <section className="grid min-h-[calc(100vh-92px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_220px]">
@@ -123,7 +120,7 @@ export default function JobsPage() {
             />
             <button
               type="submit"
-              className="bg-accent h-9 shrink-0 rounded-[4px] px-4 text-sm font-medium text-white transition hover:opacity-90"
+              className="bg-accent h-9 shrink-0 rounded-[4px] px-2 text-sm font-medium text-white transition hover:opacity-90"
             >
               조회
             </button>

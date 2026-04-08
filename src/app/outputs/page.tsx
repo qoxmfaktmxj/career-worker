@@ -49,10 +49,7 @@ export default function OutputsPage() {
   return (
     <div className="min-h-screen bg-white">
       <section className="bg-[#0a0a0a] px-12 py-10 text-white">
-        <h1 className="font-heading text-[28px] font-bold">아웃풋</h1>
-        <p className="mt-2 text-sm text-white/70">
-          생성된 답변과 초안을 관리합니다.
-        </p>
+        <h1 className="font-heading text-[28px] font-bold">생성 답변 및 초안 관리</h1>
       </section>
 
       <div className="border-b border-[var(--border)] px-12">

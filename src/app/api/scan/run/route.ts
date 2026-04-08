@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { DEFAULT_FILTER_CONFIG } from "@/lib/filters";
 import { runScan } from "@/scanners/orchestrator";
+import {
+  formatMissingScannerConfigMessage,
+  getMissingScannerConfig,
+} from "@/scanners/requirements";
 
 export async function POST() {
   const db = getDb();
@@ -15,6 +19,22 @@ export async function POST() {
   for (const source of sources) {
     try {
       const config = JSON.parse(source.config) as Record<string, unknown>;
+      const missingConfig = getMissingScannerConfig(source.channel);
+
+      if (missingConfig) {
+        results.push({
+          source_id: source.id,
+          channel: source.channel,
+          error: formatMissingScannerConfigMessage(
+            source.channel,
+            missingConfig.missingLabels
+          ),
+          missing_config: missingConfig.missingLabels,
+          missing_env: missingConfig.missingEnv,
+        });
+        continue;
+      }
+
       const result = await runScan(
         source.id,
         source.channel,
