@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { validateSession } from "@/lib/auth";
+
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
 export function proxy(request: NextRequest) {
@@ -15,8 +17,10 @@ export function proxy(request: NextRequest) {
 
   const sessionId = request.cookies.get("session_id")?.value;
 
-  if (!sessionId) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (!sessionId || !validateSession(sessionId)) {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete("session_id");
+    return response;
   }
 
   return NextResponse.next();

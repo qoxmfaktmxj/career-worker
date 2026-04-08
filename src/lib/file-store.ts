@@ -167,6 +167,16 @@ export function readOutput(relativePath: string): string {
   return fs.readFileSync(path.join(outputsDir(), relativePath), "utf-8");
 }
 
+export function deleteOutput(relativePath: string): void {
+  const filePath = path.join(outputsDir(), relativePath);
+
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  fs.unlinkSync(filePath);
+}
+
 export function readProfileFile(fileName: string): string {
   const filePath = resolveManagedProfilePath(fileName);
 

@@ -194,6 +194,7 @@ describe("Profile and outputs API routes", () => {
     expect(detailResponse.status).toBe(200);
     expect(detail.file_path).toBe(filePath);
     expect(detail.content).toContain("Output Body");
+    expect(fs.existsSync(path.join(TEST_OUTPUTS_DIR, filePath))).toBe(true);
 
     const deleteResponse = await outputRoute.DELETE(
       makeRequest("http://localhost/api/outputs/7", "DELETE"),
@@ -208,5 +209,6 @@ describe("Profile and outputs API routes", () => {
       .get(7) as { count: number };
 
     expect(count.count).toBe(0);
+    expect(fs.existsSync(path.join(TEST_OUTPUTS_DIR, filePath))).toBe(false);
   });
 });
