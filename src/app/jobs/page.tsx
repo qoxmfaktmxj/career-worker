@@ -94,7 +94,7 @@ export default function JobsPage() {
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              className="h-9 w-[132px] rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
+              className="focus-accent h-9 w-[132px] rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value || "all"} value={option.value}>
@@ -106,7 +106,7 @@ export default function JobsPage() {
             <select
               value={source}
               onChange={(event) => setSource(event.target.value)}
-              className="h-9 w-[132px] rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
+              className="focus-accent h-9 w-[132px] rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
             >
               {SOURCE_OPTIONS.map((option) => (
                 <option key={option.value || "all"} value={option.value}>
@@ -119,11 +119,11 @@ export default function JobsPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="검색어 입력"
-              className="h-9 min-w-0 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none placeholder:text-[#bbbbbb] focus:border-[var(--accent)]"
+              className="focus-accent h-9 min-w-0 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none placeholder:text-[#bbbbbb]"
             />
             <button
               type="submit"
-              className="h-9 shrink-0 rounded-[4px] bg-[var(--accent)] px-5 text-sm font-medium text-white transition hover:opacity-90"
+              className="bg-accent h-9 shrink-0 rounded-[4px] px-4 text-sm font-medium text-white transition hover:opacity-90"
             >
               조회
             </button>

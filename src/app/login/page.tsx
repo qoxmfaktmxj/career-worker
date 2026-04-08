@@ -40,9 +40,9 @@ export default function LoginPage() {
           className="overflow-hidden rounded-[4px] bg-white text-[var(--foreground)] shadow-[0_18px_48px_rgba(0,0,0,0.24)]"
         >
           <div className="flex h-[4px]">
-            <div className="w-1/3 bg-[var(--accent)]" />
+            <div className="bg-accent w-1/3" />
             <div className="w-1/3 bg-[#0a0a0a]" />
-            <div className="w-1/3 bg-[var(--accent-soft)]" />
+            <div className="bg-accent-soft w-1/3" />
           </div>
           <div className="px-9 pb-4 pt-10">
             <h1 className="font-heading text-center text-[24px] font-bold text-[var(--foreground)]">
@@ -62,14 +62,14 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="비밀번호를 입력하세요"
-              className="mt-3 h-11 w-full rounded-[4px] border border-[var(--border)] px-4 text-[14px] outline-none placeholder:text-[#c0c0c0] focus:border-[var(--accent)]"
+              className="focus-accent mt-3 h-11 w-full rounded-[4px] border border-[var(--border)] px-4 text-[14px] outline-none placeholder:text-[#c0c0c0]"
               autoFocus
             />
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 h-11 w-full rounded-[4px] border border-transparent bg-[#4a9fd8] text-sm font-medium text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
+              className="bg-accent mt-4 h-11 w-full rounded-[4px] border border-transparent text-sm font-medium text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "작업실 여는 중" : "작업실 열기"}
             </button>

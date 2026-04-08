@@ -111,7 +111,7 @@ export default function SourcesPage() {
         <div className="flex-1" />
         <button
           onClick={() => setShowAdd((current) => !current)}
-          className="rounded-[4px] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+          className="bg-accent rounded-[4px] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
         >
           {showAdd ? "닫기" : "수집원 추가"}
         </button>
@@ -134,7 +134,7 @@ export default function SourcesPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, channel: event.target.value }))
                 }
-                className="h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
+                className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
               >
                 <option value="saramin">사람인</option>
                 <option value="jobkorea">잡코리아</option>
@@ -146,7 +146,7 @@ export default function SourcesPage() {
                   setForm((current) => ({ ...current, name: event.target.value }))
                 }
                 placeholder="예: 백엔드 채용"
-                className="h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
+                className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
               />
               <input
                 value={form.keywords}
@@ -157,7 +157,7 @@ export default function SourcesPage() {
                   }))
                 }
                 placeholder="키워드, 쉼표로 구분"
-                className="h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--accent)]"
+                className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
               />
             </div>
             <div className="flex justify-end gap-3 border-t border-[var(--border)] px-8 py-4">
@@ -169,7 +169,7 @@ export default function SourcesPage() {
               </button>
               <button
                 onClick={() => void addSource()}
-                className="rounded-[4px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                className="bg-accent rounded-[4px] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
               >
                 저장
               </button>
@@ -205,7 +205,7 @@ export default function SourcesPage() {
                   <td className="py-[14px] text-[13px] text-[var(--muted-foreground)]">
                     {source.review}
                   </td>
-                  <td className="font-data py-[14px] text-[13px] text-[var(--accent)]">
+                  <td className="text-accent font-data py-[14px] text-[13px]">
                     {source.enabled}
                   </td>
                 </tr>
@@ -248,11 +248,11 @@ export default function SourcesPage() {
                   <td className="font-data py-[14px] text-[13px] text-[var(--muted-foreground)]">
                     {item.total_found}
                   </td>
-                  <td className="font-data py-[14px] text-[13px] text-[var(--accent)]">{item.new_count}</td>
+                  <td className="text-accent font-data py-[14px] text-[13px]">{item.new_count}</td>
                   <td className="font-data py-[14px] text-[13px] text-[var(--muted-foreground)]">
                     {item.status === "failed" ? "1" : "0"}
                   </td>
-                  <td className="py-[14px] text-[13px] text-[var(--accent)]">상세 보기</td>
+                  <td className="text-accent py-[14px] text-[13px]">상세 보기</td>
                 </tr>
               ))}
             </tbody>

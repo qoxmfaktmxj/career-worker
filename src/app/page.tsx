@@ -61,7 +61,7 @@ export default function DashboardPage() {
         <button
           onClick={handleScan}
           disabled={scanning}
-          className="rounded-[4px] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="bg-accent rounded-[4px] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {scanning ? "스캔 중" : "전체 스캔"}
         </button>
@@ -100,19 +100,19 @@ export default function DashboardPage() {
           <div className="my-4 h-px bg-[var(--border)]" />
           <div className="space-y-4 text-sm text-[var(--muted-foreground)]">
             <div className="flex gap-3">
-              <span className="font-data text-[var(--accent)]">1</span>
+              <span className="text-accent font-data">1</span>
               <p>수집된 공고를 확인하세요</p>
             </div>
             <div className="flex gap-3">
-              <span className="font-data text-[var(--accent)]">2</span>
+              <span className="text-accent font-data">2</span>
               <p>우선 검토 대상을 분류하세요</p>
             </div>
             <div className="flex gap-3">
-              <span className="font-data text-[var(--accent)]">3</span>
+              <span className="text-accent font-data">3</span>
               <p>기한 임박 공고를 처리하세요</p>
             </div>
             <div className="flex gap-3">
-              <span className="font-data text-[var(--accent)]">4</span>
+              <span className="text-accent font-data">4</span>
               <p>완료된 작업을 기록하세요</p>
             </div>
           </div>

@@ -63,7 +63,7 @@ export default function OutputsPage() {
               onClick={() => setTypeFilter(filter.key)}
               className={`border-b-2 px-4 py-[14px] text-sm transition ${
                 typeFilter === filter.key
-                  ? "border-[var(--accent)] text-[var(--foreground)]"
+                  ? "border-accent text-[var(--foreground)]"
                   : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
@@ -96,7 +96,7 @@ export default function OutputsPage() {
                   <td className="py-[14px] text-[13px] text-[var(--muted-foreground)]">
                     <button
                       onClick={() => void viewOutput(output.id)}
-                      className="text-[var(--accent)]"
+                      className="text-accent"
                     >
                       {TYPE_LABELS[output.type] ?? output.type}
                     </button>

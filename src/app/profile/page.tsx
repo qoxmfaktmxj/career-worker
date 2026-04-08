@@ -119,7 +119,7 @@ export default function ProfilePage() {
               onClick={() => setActiveTab(tab.key)}
               className={`border-b-2 px-4 py-3 text-sm transition ${
                 activeTab === tab.key
-                  ? "border-[var(--accent)] text-[var(--foreground)]"
+                  ? "border-accent text-[var(--foreground)]"
                   : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
@@ -144,7 +144,7 @@ export default function ProfilePage() {
                   ? setEditingProfile((current) => !current)
                   : undefined
               }
-              className="font-data text-sm text-[var(--accent)]"
+              className="text-accent font-data text-sm"
             >
               {activeTab === "profile.yml" ? "profile.md" : activeDoc.key}
             </button>
@@ -152,7 +152,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => void save()}
                 disabled={saving}
-                className="rounded-[4px] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="bg-accent rounded-[4px] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "저장 중" : "저장"}
               </button>

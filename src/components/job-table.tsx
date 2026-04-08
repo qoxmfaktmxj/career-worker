@@ -105,7 +105,7 @@ export function JobTable({
               <td className="px-5 py-4">
                 <Link
                   href={`/jobs/${job.job_id}`}
-                  className="font-medium text-[var(--foreground)] hover:text-[var(--accent)]"
+                  className="font-medium text-[var(--foreground)] hover:text-[#4a9fd8]"
                 >
                   {job.position}
                 </Link>
