@@ -59,9 +59,6 @@ export default function LoginPage() {
                 채용 작업실
               </h1>
             </div>
-            <p className="mt-3 text-center text-[14px] text-[var(--muted-foreground)]">
-              작업실 잠금 해제
-            </p>
           </div>
 
           <div className="px-9 pb-9 pt-2">

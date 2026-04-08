@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-import { saveRawJob } from "@/lib/file-store";
 import { generateJobId } from "@/lib/job-id";
 
 export async function GET(request: NextRequest) {
+  const { getDb } = await import("@/lib/db");
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const source = searchParams.get("source");
@@ -90,6 +89,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const rawUrl = body.rawUrl?.trim() || null;
 
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
   }
 
   const jobId = generateJobId();
+  const { saveRawJob } = await import("@/lib/job-file-store");
   const rawFilePath = saveRawJob(
     jobId,
     buildManualRawContent({

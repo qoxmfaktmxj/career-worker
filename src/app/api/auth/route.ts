@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createSession, deleteSession, verifyPassword } from "@/lib/auth";
-
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { password } = body as { password?: string };
+  const { createSession, verifyPassword } = await import("@/lib/auth");
 
   if (!password || !verifyPassword(password)) {
     return NextResponse.json(
@@ -27,13 +26,7 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
-export async function DELETE(request: NextRequest) {
-  const sessionId = request.cookies.get("session_id")?.value;
-
-  if (sessionId) {
-    deleteSession(sessionId);
-  }
-
+export async function DELETE() {
   const response = NextResponse.json({ success: true });
   response.cookies.delete("session_id");
 

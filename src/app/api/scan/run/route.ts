@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-
-import { getDb } from "@/lib/db";
 import { DEFAULT_FILTER_CONFIG } from "@/lib/filters";
-import { runScan } from "@/scanners/orchestrator";
 import {
   formatMissingScannerConfigMessage,
   getMissingScannerConfig,
 } from "@/scanners/requirements";
 
 export async function POST() {
+  const [{ getDb }, { runScan }] = await Promise.all([
+    import("@/lib/db"),
+    import("@/scanners/orchestrator"),
+  ]);
   const db = getDb();
   const sources = db
     .prepare("SELECT * FROM sources WHERE enabled = 1")

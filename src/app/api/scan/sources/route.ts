@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-
 const SUPPORTED_CHANNELS = new Set(["saramin", "jobkorea", "remember"]);
 
 export async function GET() {
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const sources = db
     .prepare("SELECT * FROM sources ORDER BY created_at DESC")
@@ -35,6 +34,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const result = db
     .prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")

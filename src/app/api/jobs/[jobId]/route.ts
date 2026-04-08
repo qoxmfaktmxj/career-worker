@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-import { readRawJob } from "@/lib/file-store";
-
 export async function GET(
   _: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const job = db.prepare("SELECT * FROM jobs WHERE job_id = ?").get(jobId);
 
@@ -18,6 +16,7 @@ export async function GET(
   let rawContent = "";
 
   try {
+    const { readRawJob } = await import("@/lib/job-file-store");
     rawContent = readRawJob(jobId);
   } catch {
     // The raw markdown file may not exist for manually inserted test data.
@@ -36,6 +35,7 @@ export async function PUT(
 ) {
   const { jobId } = await params;
   const body = (await request.json()) as { status?: string; memo?: string };
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const sets: string[] = ["updated_at = datetime('now')"];
   const values: unknown[] = [];

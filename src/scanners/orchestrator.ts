@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import { getDb } from "@/lib/db";
-import { deleteRawJob, saveRawJob } from "@/lib/file-store";
+import { deleteRawJob, saveRawJob } from "@/lib/job-file-store";
 import { applyFilter, type FilterConfig } from "@/lib/filters";
 import { generateJobId } from "@/lib/job-id";
 import { jobkoreaScanner } from "@/scanners/jobkorea";

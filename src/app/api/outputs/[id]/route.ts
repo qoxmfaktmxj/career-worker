@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-import { deleteOutput, readOutput } from "@/lib/file-store";
-
 export async function GET(
   _: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const output = db
     .prepare("SELECT * FROM outputs WHERE id = ?")
@@ -17,6 +15,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const { readOutput } = await import("@/lib/output-store");
   const content = readOutput(output.file_path);
 
   return NextResponse.json({ ...output, content });
@@ -27,6 +26,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { deleteOutput } = await import("@/lib/output-store");
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const output = db
     .prepare("SELECT file_path FROM outputs WHERE id = ?")

@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { getDb } from "@/lib/db";
-import { readProfileFile, saveOutput } from "@/lib/file-store";
 import { buildPrompt, callOpenClaw, loadPromptTemplate } from "@/lib/openclaw";
 
 export async function POST(
@@ -10,6 +7,7 @@ export async function POST(
 ) {
   const { jobId } = await params;
   const body = (await request.json()) as { message?: string; channel?: string };
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const job = db
     .prepare("SELECT * FROM jobs WHERE job_id = ?")
@@ -27,6 +25,10 @@ export async function POST(
   }
 
   try {
+    const [{ saveOutput }, { readProfileFile }] = await Promise.all([
+      import("@/lib/output-store"),
+      import("@/lib/profile-store"),
+    ]);
     const profile = readProfileFile("profile.yml");
     const template = loadPromptTemplate("recruiter-reply");
     const prompt = buildPrompt(template, {

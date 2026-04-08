@@ -1,36 +1,14 @@
-import fs from "fs";
-import path from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_PASSWORD = "test-pass-123";
-const TEST_DB_PATH = path.join(__dirname, "../../data/test-auth.db");
+const TEST_SECRET = "test-session-secret-1234567890";
 
 describe("Auth", () => {
   beforeEach(() => {
     vi.resetModules();
 
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
-
     process.env.AUTH_PASSWORD = TEST_PASSWORD;
-    process.env.DATA_DIR = path.join(__dirname, "../../data");
-    process.env.DB_NAME = "test-auth.db";
-  });
-
-  afterEach(async () => {
-    try {
-      const { closeDb } = await import("@/lib/db");
-      closeDb();
-    } catch {
-      // Module may not exist during the initial red phase.
-    }
-
-    vi.resetModules();
-
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
+    process.env.SESSION_SECRET = TEST_SECRET;
   });
 
   it("should reject wrong password", async () => {
@@ -60,15 +38,12 @@ describe("Auth", () => {
     expect(validateSession("nonexistent-id")).toBe(false);
   });
 
-  it("should delete an existing session", async () => {
-    const { createSession, deleteSession, validateSession } = await import(
-      "@/lib/auth"
-    );
+  it("should reject a tampered session token", async () => {
+    const { createSession, validateSession } = await import("@/lib/auth");
 
     const sessionId = createSession();
+    const tamperedSessionId = `${sessionId}tampered`;
 
-    deleteSession(sessionId);
-
-    expect(validateSession(sessionId)).toBe(false);
+    expect(validateSession(tamperedSessionId)).toBe(false);
   });
 });

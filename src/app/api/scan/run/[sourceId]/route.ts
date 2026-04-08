@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { getDb } from "@/lib/db";
 import { DEFAULT_FILTER_CONFIG } from "@/lib/filters";
-import { runScan } from "@/scanners/orchestrator";
 import {
   formatMissingScannerConfigMessage,
   getMissingScannerConfig,
@@ -13,6 +10,10 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   const { sourceId } = await params;
+  const [{ getDb }, { runScan }] = await Promise.all([
+    import("@/lib/db"),
+    import("@/scanners/orchestrator"),
+  ]);
   const db = getDb();
   const source = db
     .prepare("SELECT * FROM sources WHERE id = ?")

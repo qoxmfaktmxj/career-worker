@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-
 export async function GET() {
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const history = db
     .prepare(`

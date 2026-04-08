@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("job_id");
   const type = searchParams.get("type");
 
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   let query = `
     SELECT o.*, j.company, j.position

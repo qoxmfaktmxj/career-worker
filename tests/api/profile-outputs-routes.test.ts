@@ -63,7 +63,7 @@ describe("Profile and outputs API routes", () => {
   });
 
   it("lists profile files and updates profile content safely", async () => {
-    const { writeProfileFile } = await import("@/lib/file-store");
+    const { writeProfileFile } = await import("@/lib/profile-store");
 
     writeProfileFile("profile.yml", "name: Kim");
     writeProfileFile("master_resume.md", "# Resume");

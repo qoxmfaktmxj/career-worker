@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { getDb } from "@/lib/db";
-import { readProfileFile, readRawJob } from "@/lib/file-store";
 import { buildPrompt, callOpenClaw, loadPromptTemplate } from "@/lib/openclaw";
 
 export async function POST(
@@ -9,6 +6,7 @@ export async function POST(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const job = db
     .prepare("SELECT * FROM jobs WHERE job_id = ?")
@@ -19,6 +17,10 @@ export async function POST(
   }
 
   try {
+    const [{ readRawJob }, { readProfileFile }] = await Promise.all([
+      import("@/lib/job-file-store"),
+      import("@/lib/profile-store"),
+    ]);
     const rawJd = readRawJob(jobId);
     const profile = readProfileFile("profile.yml");
     const skills = readProfileFile("master_resume.md");

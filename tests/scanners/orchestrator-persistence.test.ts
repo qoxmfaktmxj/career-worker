@@ -12,9 +12,9 @@ const TEST_JOBS_DIR = path.join(__dirname, "../../tmp/orchestrator-persistence/j
 const saveRawJobMock = vi.fn();
 const saraminScanMock = vi.fn();
 
-vi.mock("@/lib/file-store", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/file-store")>(
-    "@/lib/file-store"
+vi.mock("@/lib/job-file-store", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/job-file-store")>(
+    "@/lib/job-file-store"
   );
 
   return {

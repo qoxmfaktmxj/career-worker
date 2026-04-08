@@ -70,23 +70,6 @@ describe("FileStore", () => {
     expect(readOutput(filePath)).toContain("# 답변");
   });
 
-  it("should write, read, and list profile files", async () => {
-    const { listProfileFiles, readProfileFile, writeProfileFile } = await import(
-      "@/lib/file-store"
-    );
-
-    writeProfileFile("profile.yml", "name: tester");
-    writeProfileFile("career_story.md", "# Story");
-    fs.writeFileSync(
-      path.join(TEST_DIR, "profile", "notes.md"),
-      "# not a managed profile file",
-      "utf-8"
-    );
-
-    expect(readProfileFile("profile.yml")).toContain("tester");
-    expect(listProfileFiles().sort()).toEqual(["career_story.md", "profile.yml"]);
-  });
-
   it("should generate unique job ids without reusing deleted rows", async () => {
     const { generateJobId } = await import("@/lib/job-id");
     const { getDb } = await import("@/lib/db");
@@ -107,16 +90,4 @@ describe("FileStore", () => {
     expect(secondId).not.toBe(firstId);
   });
 
-  it("should reject unsupported relative profile directory overrides", async () => {
-    const sandboxDir = path.join(TEST_DIR, "cwd-sandbox");
-    fs.mkdirSync(sandboxDir, { recursive: true });
-    process.chdir(sandboxDir);
-    process.env.PROFILE_DIR = "./custom-profile";
-
-    const { writeProfileFile } = await import("@/lib/file-store");
-
-    expect(() => writeProfileFile("profile.yml", "name: tester")).toThrow(
-      /PROFILE_DIR/
-    );
-  });
 });

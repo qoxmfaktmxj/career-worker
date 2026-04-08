@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
-
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const body = await request.json();
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -42,6 +41,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { getDb } = await import("@/lib/db");
   const db = getDb();
 
   const historyCount = db

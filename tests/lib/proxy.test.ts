@@ -1,35 +1,12 @@
-import fs from "fs";
-import path from "path";
 import { NextRequest } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const TEST_DB_PATH = path.join(__dirname, "../../data/test-proxy.db");
+const TEST_SECRET = "test-session-secret-1234567890";
 
 describe("Proxy", () => {
   beforeEach(() => {
     vi.resetModules();
-
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
-
-    process.env.DATA_DIR = path.join(__dirname, "../../data");
-    process.env.DB_NAME = "test-proxy.db";
-  });
-
-  afterEach(async () => {
-    try {
-      const { closeDb } = await import("@/lib/db");
-      closeDb();
-    } catch {
-      // ignore cleanup errors during red phase
-    }
-
-    vi.resetModules();
-
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
+    process.env.SESSION_SECRET = TEST_SECRET;
   });
 
   it("redirects protected routes when session cookie is missing or invalid", async () => {

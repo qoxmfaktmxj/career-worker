@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  isManagedProfileFile,
-  listProfileFiles,
-  readProfileFile,
-  writeProfileFile,
-} from "@/lib/file-store";
-
 export async function GET() {
+  const { listProfileFiles, readProfileFile } = await import(
+    "@/lib/profile-store"
+  );
   const files = listProfileFiles();
   const profile: Record<string, string> = {};
 
@@ -19,6 +15,9 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  const { isManagedProfileFile, writeProfileFile } = await import(
+    "@/lib/profile-store"
+  );
   const body = (await request.json()) as {
     fileName?: string;
     content?: string;

@@ -15,19 +15,23 @@ function isDefaultRelativeDir(configured: string, defaultDir: string): boolean {
   return normalized === defaultDir;
 }
 
+function canUseAbsoluteDataDir(): boolean {
+  return process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+}
+
 function resolveDataDir(): string {
   const configured = process.env.DATA_DIR?.trim();
 
   if (!configured) {
-    return path.join(/* turbopackIgnore: true */ process.cwd(), "data");
+    return path.join(/*turbopackIgnore: true*/ process.cwd(), "data");
   }
 
-  if (path.isAbsolute(configured)) {
-    return configured;
+  if (canUseAbsoluteDataDir() && path.isAbsolute(configured)) {
+    return path.join(/*turbopackIgnore: true*/ configured);
   }
 
   if (isDefaultRelativeDir(configured, "data")) {
-    return path.join(/* turbopackIgnore: true */ process.cwd(), "data");
+    return path.join(/*turbopackIgnore: true*/ process.cwd(), "data");
   }
 
   throw new Error("DATA_DIR must be ./data or an absolute path");

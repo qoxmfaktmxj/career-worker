@@ -112,7 +112,7 @@ describe("Job AI action routes", () => {
   }
 
   async function seedProfileFiles() {
-    const { writeProfileFile } = await import("@/lib/file-store");
+    const { writeProfileFile } = await import("@/lib/profile-store");
 
     writeProfileFile("profile.yml", "name: Kim\nrole: backend engineer");
     writeProfileFile("master_resume.md", "# Resume\n- Java");
