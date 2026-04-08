@@ -49,6 +49,7 @@ export async function POST(
         fit_reason = ?,
         risks = ?,
         recommended_stories = ?,
+        questions_detected = ?,
         updated_at = datetime('now')
       WHERE job_id = ?
     `).run(
@@ -58,6 +59,9 @@ export async function POST(
       JSON.stringify(Array.isArray(data.risks) ? data.risks : []),
       JSON.stringify(
         Array.isArray(data.recommended_stories) ? data.recommended_stories : []
+      ),
+      JSON.stringify(
+        Array.isArray(data.questions_detected) ? data.questions_detected : []
       ),
       jobId
     );

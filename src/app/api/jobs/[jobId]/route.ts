@@ -51,7 +51,13 @@ export async function PUT(
   }
 
   values.push(jobId);
-  db.prepare(`UPDATE jobs SET ${sets.join(", ")} WHERE job_id = ?`).run(...values);
+  const result = db
+    .prepare(`UPDATE jobs SET ${sets.join(", ")} WHERE job_id = ?`)
+    .run(...values);
+
+  if (result.changes === 0) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({ success: true });
 }

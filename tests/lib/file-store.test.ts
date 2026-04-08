@@ -87,7 +87,7 @@ describe("FileStore", () => {
     expect(listProfileFiles().sort()).toEqual(["career_story.md", "profile.yml"]);
   });
 
-  it("should generate sequential job ids from the database", async () => {
+  it("should generate unique job ids without reusing deleted rows", async () => {
     const { generateJobId } = await import("@/lib/job-id");
     const { getDb } = await import("@/lib/db");
 
@@ -98,10 +98,13 @@ describe("FileStore", () => {
       "INSERT INTO jobs (job_id, source, company, position) VALUES (?, ?, ?, ?)"
     ).run(firstId, "saramin", "Test Company", "Backend Developer");
 
+    db.prepare("DELETE FROM jobs WHERE job_id = ?").run(firstId);
+
     const secondId = generateJobId();
 
-    expect(firstId).toBe("JOB-0001");
-    expect(secondId).toBe("JOB-0002");
+    expect(firstId).toMatch(/^JOB-/);
+    expect(secondId).toMatch(/^JOB-/);
+    expect(secondId).not.toBe(firstId);
   });
 
   it("should reject unsupported relative profile directory overrides", async () => {

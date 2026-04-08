@@ -44,6 +44,17 @@ export async function DELETE(
   const { id } = await params;
   const db = getDb();
 
+  const historyCount = db
+    .prepare("SELECT COUNT(*) as count FROM scan_runs WHERE source_id = ?")
+    .get(id) as { count: number };
+
+  if (historyCount.count > 0) {
+    return NextResponse.json(
+      { error: "Cannot delete a source with scan history" },
+      { status: 409 }
+    );
+  }
+
   db.prepare("DELETE FROM sources WHERE id = ?").run(id);
 
   return NextResponse.json({ success: true });

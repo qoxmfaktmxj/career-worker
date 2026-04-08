@@ -4,6 +4,12 @@ import path from "path";
 
 let db: Database.Database | null = null;
 
+type TableColumn = {
+  name: string;
+  type: string;
+  definition: string;
+};
+
 function isDefaultRelativeDir(configured: string, defaultDir: string): boolean {
   const normalized = configured.replace(/\\/g, "/").replace(/^\.\//, "");
   return normalized === defaultDir;
@@ -80,6 +86,7 @@ function initSchema(database: Database.Database): void {
       fit_reason          TEXT,
       risks               TEXT,
       recommended_stories TEXT,
+      questions_detected  TEXT,
       raw_file            TEXT,
       normalized_file     TEXT,
       filter_reason       TEXT,
@@ -129,6 +136,11 @@ function initSchema(database: Database.Database): void {
       expires_at TEXT NOT NULL
     );
 
+  `);
+
+  migrateSchema(database);
+
+  database.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_deadline ON jobs(deadline);
     CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
@@ -137,6 +149,72 @@ function initSchema(database: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_scan_runs_source ON scan_runs(source_id);
     CREATE INDEX IF NOT EXISTS idx_outputs_job ON outputs(job_id);
   `);
+}
+
+function getTableColumns(
+  database: Database.Database,
+  tableName: string
+): Set<string> {
+  const columns = database
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+
+  return new Set(columns.map((column) => column.name));
+}
+
+function ensureColumns(
+  database: Database.Database,
+  tableName: string,
+  columns: TableColumn[]
+): void {
+  const existingColumns = getTableColumns(database, tableName);
+
+  for (const column of columns) {
+    if (existingColumns.has(column.name)) {
+      continue;
+    }
+
+    database.exec(
+      `ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.definition}`
+    );
+  }
+}
+
+function migrateSchema(database: Database.Database): void {
+  ensureColumns(database, "jobs", [
+    { name: "source_id", type: "TEXT", definition: "TEXT" },
+    { name: "location", type: "TEXT", definition: "TEXT" },
+    { name: "employment_type", type: "TEXT", definition: "TEXT" },
+    { name: "company_size", type: "TEXT", definition: "TEXT" },
+    { name: "employee_count", type: "INTEGER", definition: "INTEGER" },
+    { name: "raw_url", type: "TEXT", definition: "TEXT" },
+    { name: "deadline", type: "TEXT", definition: "TEXT" },
+    { name: "salary_text", type: "TEXT", definition: "TEXT" },
+    {
+      name: "status",
+      type: "TEXT",
+      definition: "TEXT DEFAULT 'collected'",
+    },
+    { name: "fit_score", type: "REAL", definition: "REAL" },
+    { name: "fit_reason", type: "TEXT", definition: "TEXT" },
+    { name: "risks", type: "TEXT", definition: "TEXT" },
+    {
+      name: "recommended_stories",
+      type: "TEXT",
+      definition: "TEXT",
+    },
+    {
+      name: "questions_detected",
+      type: "TEXT",
+      definition: "TEXT",
+    },
+    { name: "raw_file", type: "TEXT", definition: "TEXT" },
+    { name: "normalized_file", type: "TEXT", definition: "TEXT" },
+    { name: "filter_reason", type: "TEXT", definition: "TEXT" },
+    { name: "memo", type: "TEXT", definition: "TEXT" },
+    { name: "created_at", type: "TEXT", definition: "TEXT" },
+    { name: "updated_at", type: "TEXT", definition: "TEXT" },
+  ]);
 }
 
 export function closeDb(): void {

@@ -1,49 +1,64 @@
 # Career Worker
 
-단일 사용자를 위한 채용 공고 수집, 선별, AI 평가 보조 도구입니다.  
-Next.js 16, React 19, SQLite, 파일 기반 프로필/산출물 저장소를 사용합니다.
+개인용 채용 공고 작업 도구입니다.  
+Next.js 16, React 19, SQLite, 로컬 파일 저장소를 기준으로 동작합니다.
 
-현재 기준으로는 다음 흐름이 동작합니다.
+현재 구현 범위는 다음 흐름까지 연결되어 있습니다.
 
 1. 비밀번호 로그인
 2. 수집원 등록
 3. 공고 스캔 실행
 4. 룰 기반 1차 필터링
-5. 공고 상세에서 AI 평가 / 답변팩 / 맞춤 이력서 / 리크루터 답장 생성
-6. 산출물 조회 및 삭제
+5. 공고 상세에서 AI 적합도 평가
+6. 답변팩, 맞춤 이력서, 리크루터 답장 초안 생성
+7. 산출물 조회 및 삭제
 
 ## 현재 상태
 
-이 저장소는 더 이상 스캐폴딩 단계가 아닙니다.  
-대시보드, 공고 목록/상세, 수집원, 프로필, 산출물 화면과 관련 API가 구현되어 있어 로컬 데모와 수동 운영은 가능한 상태입니다.
+이 저장소는 단순 스캐폴딩 단계는 지났고, 로컬에서 시연 가능한 MVP 상태입니다.
 
-다만 "완전히 끝났다"고 보긴 어렵습니다. 현재 남아 있는 주요 항목은 아래와 같습니다.
+- 대시보드, 공고 목록/상세, 수집원, 프로필, 산출물 화면이 있습니다.
+- 스캔, 공고 조회, AI 액션, 프로필, 산출물 API가 구현되어 있습니다.
+- SQLite 스키마 초기화와 마이그레이션이 포함되어 있습니다.
+- 세션은 DB 만료 검증까지 포함해 체크합니다.
 
-- `openclaw` CLI가 로컬에 없어 실연동 스모크 테스트를 아직 하지 못했습니다.
-- 스캔 시 저장되는 JD는 상세 공고 전문이 아니라 카드/목록 수준 요약입니다.
-- `JOB-0001` 형태의 ID를 `COUNT(*) + 1`로 만들고 있어 삭제나 동시 실행에 취약합니다.
-- 수집원 삭제와 스캔 이력 FK 정합성은 추가 보강이 필요합니다.
-- 잡코리아/리멤버 HTML 파서는 실제 DOM 변경에 민감하므로 실사이트 검증이 더 필요합니다.
-- `next build` 시 Turbopack NFT warning 1건이 남아 있지만 빌드는 성공합니다.
+최근 반영된 안정화 작업은 아래와 같습니다.
 
-## 주요 기능
+- `questions_detected`를 DB에 저장하고 답변팩 생성 시 실제 문항을 사용합니다.
+- 수집 이력이 있는 수집원은 삭제되지 않도록 막습니다.
+- 공고 ID는 `COUNT(*) + 1` 대신 랜덤 기반으로 생성합니다.
+- 스캔 중 raw 파일 저장이 실패하면 DB insert를 롤백하고 생성된 파일도 정리합니다.
+- 단일 수집원 스캔 실패는 500 JSON으로 응답합니다.
+- 존재하지 않는 공고 업데이트는 404를 반환합니다.
+- UI에서 실제로 없는 `cover_letter` 생성 기능 필터는 제거했습니다.
 
-### UI
+## 남은 제약
+
+아래 항목은 아직 남아 있는 리스크입니다.
+
+- `openclaw` CLI가 로컬에 없어 실연동 검증은 아직 하지 못했습니다.
+- 현재 저장되는 JD는 상세 공고 전문이 아니라 목록/카드 수준 요약입니다.
+- JobKorea, Remember 스캐너는 HTML 셀렉터 변화에 민감합니다.
+- `next build`는 통과하지만 Turbopack NFT warning 1건이 남아 있습니다.
+- 수집원 설정은 기본적으로 `keywords` 중심이며, 채널별 세부 설정 UI는 아직 얕습니다.
+
+## 주요 화면
 
 - `/login`: 비밀번호 로그인
 - `/`: 대시보드, 통계, 최근 매칭 공고, 전체 스캔 실행
 - `/jobs`: 공고 목록, 상태/채널/검색 필터
-- `/jobs/[jobId]`: 공고 원문, AI 평가, 답변팩/이력서/답장 생성
-- `/sources`: 수집원 등록, 수집원 목록, 최근 스캔 이력
-- `/profile`: 프로필 YAML/Markdown 편집
-- `/outputs`: 생성 산출물 조회, 타입 필터, 본문 확인
+- `/jobs/[jobId]`: 공고 상세, AI 평가, 답변팩/이력서/답장 생성
+- `/sources`: 수집원 등록, 목록, 최근 스캔 이력
+- `/profile`: 프로필 파일 편집
+- `/outputs`: 생성 산출물 조회, 복사, 삭제
 
-### API
+## 주요 API
 
 - `POST /api/auth`
 - `GET /api/jobs`
 - `GET /api/jobs/stats`
 - `GET /api/jobs/:jobId`
+- `PUT /api/jobs/:jobId`
 - `POST /api/jobs/:jobId/evaluate`
 - `POST /api/jobs/:jobId/generate-answers`
 - `POST /api/jobs/:jobId/generate-resume`
@@ -61,11 +76,11 @@ Next.js 16, React 19, SQLite, 파일 기반 프로필/산출물 저장소를 사
 - `POST /api/scan/run/:sourceId`
 - `GET /api/scan/history`
 
-### 수집 채널
+## 수집 채널
 
-- 사람인 API 기반 스캐너
-- 잡코리아 HTML 파서
-- 리멤버 HTML 파서
+- Saramin API 기반 스캐너
+- JobKorea HTML 파서
+- Remember HTML 파서
 
 ## 기술 스택
 
@@ -73,9 +88,9 @@ Next.js 16, React 19, SQLite, 파일 기반 프로필/산출물 저장소를 사
 - React 19
 - Tailwind CSS 4
 - SQLite (`better-sqlite3`)
-- Cheerio 기반 HTML 파싱
-- Markdown/YAML 파일 저장 (`gray-matter`, `js-yaml`)
+- Cheerio
 - Vitest
+- Markdown/YAML 파일 저장 (`gray-matter`, `js-yaml`)
 
 ## 프로젝트 구조
 
@@ -109,9 +124,9 @@ docs/
 npm install
 ```
 
-### 2. 환경변수 준비
+### 2. 환경 변수 준비
 
-`.env.example`을 복사해 `.env`를 만듭니다.
+`.env.example`을 복사해서 `.env`를 만듭니다.
 
 ```bash
 cp .env.example .env
@@ -130,10 +145,10 @@ Copy-Item .env.example .env
 
 선택 값:
 
-- `SARAMIN_API_KEY`: 사람인 API 사용 시 필요
+- `SARAMIN_API_KEY`: Saramin API 사용 시 필요
 - `OPENCLAW_TIMEOUT`: OpenClaw 호출 타임아웃
 - `PORT`: 기본값 `3010`
-- `DATA_DIR`, `PROFILE_DIR`, `JOBS_DIR`, `OUTPUTS_DIR`: 상대 경로 또는 절대 경로
+- `DATA_DIR`, `PROFILE_DIR`, `JOBS_DIR`, `OUTPUTS_DIR`: 기본 상대 경로 또는 절대 경로
 
 ### 3. 개발 서버 실행
 
@@ -153,20 +168,15 @@ npm run test
 npm run build
 ```
 
-현재 기준 최근 검증 결과:
-
-- `npm run lint` 통과
-- `npm run test` 54 passing
-- `npm run build` 통과
-
 ## 데이터 저장 방식
 
-- SQLite DB: `data/career-worker.db`
-- 수집한 원문 JD: `jobs/raw/*.md`
-- 생성 산출물: `outputs/*.md`
-- 프로필 자산: `profile/`
+- SQLite DB: `data/*.db`
+- 원문 JD: `jobs/raw/*.md`
+- 정규화 JSON: `jobs/normalized/*.json`
+- 생성 산출물: `outputs/**/*.md`
+- 프로필 파일: `profile/*`
 
-프로필은 아래 파일만 허용합니다.
+관리 대상 프로필 파일은 아래 6개입니다.
 
 - `profile.yml`
 - `master_resume.md`
@@ -177,7 +187,7 @@ npm run build
 
 ## AI 동작 방식
 
-AI 관련 액션은 내부 프롬프트 템플릿과 `openclaw` CLI를 사용합니다.
+AI 액션은 프롬프트 템플릿과 `openclaw` CLI를 사용합니다.
 
 - 공고 적합도 평가
 - 답변팩 생성
@@ -186,8 +196,8 @@ AI 관련 액션은 내부 프롬프트 템플릿과 `openclaw` CLI를 사용합
 
 주의:
 
-- `openclaw`가 설치되지 않으면 AI 액션 라우트는 정상 동작하지 않습니다.
-- 현재 자동 스캔 뒤에 AI 평가가 연쇄 실행되지는 않습니다. 공고 상세에서 수동 실행하는 구조입니다.
+- `openclaw`가 설치되지 않으면 AI 액션은 동작하지 않습니다.
+- 자동 스캔만으로 AI 평가가 연속 실행되지는 않습니다. 공고 상세에서 수동 실행합니다.
 
 ## 문서
 
@@ -196,10 +206,8 @@ AI 관련 액션은 내부 프롬프트 템플릿과 `openclaw` CLI를 사용합
 
 ## 다음 우선순위
 
-현재 코드 기준으로 남은 후속 작업 우선순위는 아래가 적절합니다.
-
 1. `openclaw` 실연동 검증
-2. 상세 JD 전문 수집과 문항 데이터 저장
-3. 공고 ID 생성 및 스캔 저장 정합성 보강
-4. 수집원 관리 UI를 백엔드 기능 수준까지 확장
-5. 운영 문서와 배포 문서 정리
+2. 상세 JD 전문 수집 및 문항 추출 강화
+3. 채널별 설정 UI 확장
+4. 스캐너 실사이트 회귀 테스트 보강
+5. Turbopack warning 정리

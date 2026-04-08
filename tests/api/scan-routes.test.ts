@@ -82,6 +82,23 @@ describe("Scan API routes", () => {
     expect(JSON.parse(sources[0].config)).toEqual({ keywords: ["java"] });
   });
 
+  it("rejects an unsupported scan channel", async () => {
+    const sourcesRoute = await import("@/app/api/scan/sources/route");
+
+    const response = await sourcesRoute.POST(
+      makeJsonRequest("http://localhost/api/scan/sources", "POST", {
+        channel: "linkedin",
+        name: "LinkedIn",
+        config: { keywords: ["java"] },
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Unsupported channel",
+    });
+  });
+
   it("updates and deletes a scan source", async () => {
     const { getDb } = await import("@/lib/db");
     const db = getDb();
@@ -122,6 +139,32 @@ describe("Scan API routes", () => {
     expect(
       db.prepare("SELECT COUNT(*) as count FROM sources").get() as { count: number }
     ).toEqual({ count: 0 });
+  });
+
+  it("returns 409 when deleting a source that has scan history", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
+      .run("saramin", "사람인 백엔드", JSON.stringify({ keywords: ["java"] }));
+    db.prepare(
+      "INSERT INTO scan_runs (source_id, status, finished_at) VALUES (?, ?, datetime('now'))"
+    ).run(1, "completed");
+
+    const sourceRoute = await import("@/app/api/scan/sources/[id]/route");
+    const response = await sourceRoute.DELETE(
+      makeJsonRequest("http://localhost/api/scan/sources/1", "DELETE"),
+      { params: Promise.resolve({ id: "1" }) }
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Cannot delete a source with scan history",
+    });
+    expect(
+      db.prepare("SELECT COUNT(*) as count FROM sources WHERE id = ?").get(1) as {
+        count: number;
+      }
+    ).toEqual({ count: 1 });
   });
 
   it("runs enabled scan sources and returns per-source results", async () => {
@@ -212,6 +255,24 @@ describe("Scan API routes", () => {
 
     expect(notFoundResponse.status).toBe(404);
     expect(await notFoundResponse.json()).toEqual({ error: "Source not found" });
+  });
+
+  it("returns 500 json when a single source scan fails", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
+      .run("saramin", "사람인", JSON.stringify({ keywords: ["java"] }));
+
+    runScanMock.mockRejectedValueOnce(new Error("scanner unavailable"));
+
+    const runSourceRoute = await import("@/app/api/scan/run/[sourceId]/route");
+    const response = await runSourceRoute.POST(
+      makeJsonRequest("http://localhost/api/scan/run/1", "POST"),
+      { params: Promise.resolve({ sourceId: "1" }) }
+    );
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "scanner unavailable" });
   });
 
   it("returns joined scan history rows", async () => {

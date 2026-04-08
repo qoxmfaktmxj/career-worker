@@ -4,6 +4,19 @@ import { getDb } from "@/lib/db";
 import { readProfileFile, readRawJob, saveOutput } from "@/lib/file-store";
 import { buildPrompt, callOpenClaw, loadPromptTemplate } from "@/lib/openclaw";
 
+function parseQuestions(value: unknown): string[] {
+  if (typeof value !== "string" || !value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function POST(
   _: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
@@ -24,10 +37,15 @@ export async function POST(
     const careerStory = readProfileFile("career_story.md");
     const storyBank = readProfileFile("story_bank.md");
     const answerBank = readProfileFile("answer_bank.md");
-    const questions =
-      typeof job.recommended_stories === "string" && job.recommended_stories
-        ? job.recommended_stories
-        : "자동 감지";
+    const detectedQuestions = parseQuestions(job.questions_detected);
+
+    if (detectedQuestions.length === 0) {
+      return NextResponse.json(
+        { error: "Detected questions are required before generating answers" },
+        { status: 400 }
+      );
+    }
+
     const template = loadPromptTemplate("generate-answer-pack");
     const prompt = buildPrompt(template, {
       profile,
@@ -35,7 +53,7 @@ export async function POST(
       stories: storyBank,
       answer_bank: answerBank,
       jd: rawJd,
-      questions,
+      questions: detectedQuestions.join("\n"),
     });
     const response = await callOpenClaw(prompt);
 

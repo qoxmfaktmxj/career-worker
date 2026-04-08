@@ -76,4 +76,32 @@ describe("Database", () => {
 
     expect(() => getDb()).toThrow(/DATA_DIR/);
   });
+
+  it("should migrate an existing jobs table to include detected questions", async () => {
+    const { default: Database } = await import("better-sqlite3");
+
+    fs.mkdirSync(path.join(__dirname, "../../data"), { recursive: true });
+
+    const legacyDb = new Database(TEST_DB_PATH);
+    legacyDb.exec(`
+      CREATE TABLE jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id TEXT UNIQUE NOT NULL,
+        source TEXT NOT NULL,
+        company TEXT NOT NULL,
+        position TEXT NOT NULL
+      );
+    `);
+    legacyDb.close();
+
+    const { getDb, closeDb } = await import("@/lib/db");
+    const db = getDb();
+    const columns = db
+      .prepare("PRAGMA table_info(jobs)")
+      .all() as Array<{ name: string }>;
+
+    expect(columns.map((column) => column.name)).toContain("questions_detected");
+
+    closeDb();
+  });
 });

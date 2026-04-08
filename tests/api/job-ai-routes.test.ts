@@ -83,6 +83,7 @@ describe("Job AI action routes", () => {
       position: "Backend Engineer",
       status: "matched",
       recommended_stories: JSON.stringify(["S001"]),
+      questions_detected: JSON.stringify(["지원 동기를 말씀해 주세요."]),
       fit_score: 4.2,
       fit_reason: "좋은 적합도",
       risks: JSON.stringify(["리스크 1"]),
@@ -92,8 +93,8 @@ describe("Job AI action routes", () => {
     db.prepare(`
       INSERT INTO jobs (
         job_id, source, company, position, status,
-        recommended_stories, fit_score, fit_reason, risks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        recommended_stories, questions_detected, fit_score, fit_reason, risks
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       jobId,
       baseJob.source,
@@ -101,6 +102,7 @@ describe("Job AI action routes", () => {
       baseJob.position,
       baseJob.status,
       baseJob.recommended_stories,
+      baseJob.questions_detected,
       baseJob.fit_score,
       baseJob.fit_reason,
       baseJob.risks
@@ -133,6 +135,7 @@ describe("Job AI action routes", () => {
         fit_reason: "요구 역량과 경력이 잘 맞습니다.",
         risks: ["도메인 적응 필요"],
         recommended_stories: ["S001", "S003"],
+        questions_detected: ["1분 자기소개를 해주세요."],
       },
     });
 
@@ -150,13 +153,14 @@ describe("Job AI action routes", () => {
         fit_reason: "요구 역량과 경력이 잘 맞습니다.",
         risks: ["도메인 적응 필요"],
         recommended_stories: ["S001", "S003"],
+        questions_detected: ["1분 자기소개를 해주세요."],
       },
     });
 
     const { getDb } = await import("@/lib/db");
     const updated = getDb()
       .prepare(
-        "SELECT status, fit_score, fit_reason, risks, recommended_stories FROM jobs WHERE job_id = ?"
+        "SELECT status, fit_score, fit_reason, risks, recommended_stories, questions_detected FROM jobs WHERE job_id = ?"
       )
       .get("JOB-EVAL-1") as Record<string, unknown>;
 
@@ -166,13 +170,19 @@ describe("Job AI action routes", () => {
       fit_reason: "요구 역량과 경력이 잘 맞습니다.",
       risks: JSON.stringify(["도메인 적응 필요"]),
       recommended_stories: JSON.stringify(["S001", "S003"]),
+      questions_detected: JSON.stringify(["1분 자기소개를 해주세요."]),
     });
   });
 
   it("generates an answer pack, saves output, and marks draft_ready", async () => {
     const { saveRawJob, readOutput } = await import("@/lib/file-store");
 
-    await seedJob("JOB-ANS-1");
+    await seedJob("JOB-ANS-1", {
+      questions_detected: JSON.stringify([
+        "지원 동기를 말씀해 주세요.",
+        "가장 큰 성과를 설명해 주세요.",
+      ]),
+    });
     await seedProfileFiles();
     saveRawJob("JOB-ANS-1", "# JD\n- 문항 포함");
 
@@ -211,6 +221,13 @@ describe("Job AI action routes", () => {
     expect(body.success).toBe(true);
     expect(body.file_path).toContain("answer_packs");
     expect(readOutput(body.file_path)).toContain("지원 동기");
+    const prompt = callOpenClawMock.mock.calls[0]?.[0] as string;
+
+    expect(prompt).toContain("지원 동기를 말씀해 주세요.");
+    expect(prompt).toContain("가장 큰 성과를 설명해 주세요.");
+    expect(prompt).not.toMatch(
+      /## 감지된 문항 또는 작성할 주제\s+\["S001"\]/
+    );
 
     const { getDb } = await import("@/lib/db");
     const output = getDb()
@@ -222,6 +239,34 @@ describe("Job AI action routes", () => {
 
     expect(output).toEqual({ type: "answer_pack", file_path: body.file_path });
     expect(job.status).toBe("draft_ready");
+  });
+
+  it("rejects answer generation when detected questions are missing", async () => {
+    const { saveRawJob } = await import("@/lib/file-store");
+
+    await seedJob("JOB-ANS-MISSING", {
+      questions_detected: null,
+      recommended_stories: JSON.stringify(["S001"]),
+    });
+    await seedProfileFiles();
+    saveRawJob("JOB-ANS-MISSING", "# JD\n- no detected questions");
+
+    const answersRoute = await import(
+      "@/app/api/jobs/[jobId]/generate-answers/route"
+    );
+    const response = await answersRoute.POST(
+      makeRequest(
+        "http://localhost/api/jobs/JOB-ANS-MISSING/generate-answers",
+        "POST"
+      ),
+      { params: Promise.resolve({ jobId: "JOB-ANS-MISSING" }) }
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Detected questions are required before generating answers",
+    });
+    expect(callOpenClawMock).not.toHaveBeenCalled();
   });
 
   it("generates a tailored resume and stores the markdown output", async () => {

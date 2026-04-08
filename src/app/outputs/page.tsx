@@ -12,7 +12,7 @@ interface OutputRow {
   type: string;
 }
 
-const TYPES = ["", "answer_pack", "resume", "cover_letter", "recruiter_reply"];
+const TYPES = ["", "answer_pack", "resume", "recruiter_reply"];
 
 export default function OutputsPage() {
   const [outputs, setOutputs] = useState<OutputRow[]>([]);

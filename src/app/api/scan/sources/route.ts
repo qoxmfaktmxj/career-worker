@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getDb } from "@/lib/db";
 
+const SUPPORTED_CHANNELS = new Set(["saramin", "jobkorea", "remember"]);
+
 export async function GET() {
   const db = getDb();
   const sources = db
@@ -21,7 +23,14 @@ export async function POST(request: NextRequest) {
 
   if (!channel || !name || !config) {
     return NextResponse.json(
-      { error: "channel, name, config 필수" },
+      { error: "channel, name, config is required" },
+      { status: 400 }
+    );
+  }
+
+  if (!SUPPORTED_CHANNELS.has(channel)) {
+    return NextResponse.json(
+      { error: "Unsupported channel" },
       { status: 400 }
     );
   }

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import { getDb } from "@/lib/db";
-import { saveRawJob } from "@/lib/file-store";
+import { deleteRawJob, saveRawJob } from "@/lib/file-store";
 import { applyFilter, type FilterConfig } from "@/lib/filters";
 import { generateJobId } from "@/lib/job-id";
 import { jobkoreaScanner } from "@/scanners/jobkorea";
@@ -62,6 +62,25 @@ export interface ScanRunResult {
   passed_count: number;
 }
 
+type PendingResult = {
+  result: ScanResult;
+  fingerprint: string;
+  filterReason: string | null;
+  status: "passed" | "filtered_out";
+};
+
+function buildRawContent(result: ScanResult): string {
+  return [
+    `# ${result.company} - ${result.position}`,
+    `- source: ${result.source}`,
+    `- url: ${result.raw_url}`,
+    `- collected_at: ${new Date().toISOString()}`,
+    "",
+    "# 원문 JD",
+    result.raw_text,
+  ].join("\n");
+}
+
 export async function runScan(
   sourceId: number,
   channel: string,
@@ -95,9 +114,18 @@ export async function runScan(
       filtered_count: 0,
       passed_count: 0,
     };
+    const pendingResults: PendingResult[] = [];
+    const seenFingerprints = new Set<string>();
+    const createdRawFiles: string[] = [];
 
     for (const result of results) {
       const fingerprint = makeFingerprint(result);
+
+      if (seenFingerprints.has(fingerprint)) {
+        stats.duplicate_count += 1;
+        continue;
+      }
+
       const existing = db
         .prepare("SELECT id FROM job_fingerprints WHERE fingerprint = ?")
         .get(fingerprint);
@@ -106,6 +134,8 @@ export async function runScan(
         stats.duplicate_count += 1;
         continue;
       }
+
+      seenFingerprints.add(fingerprint);
 
       const filterResult = applyFilter(
         {
@@ -117,62 +147,14 @@ export async function runScan(
         },
         filterConfig
       );
-
-      const jobId = generateJobId();
       const status = filterResult.passed ? "passed" : "filtered_out";
 
-      db.prepare(`
-        INSERT INTO jobs (
-          job_id,
-          source,
-          source_id,
-          company,
-          position,
-          location,
-          employment_type,
-          company_size,
-          employee_count,
-          raw_url,
-          deadline,
-          salary_text,
-          status,
-          filter_reason,
-          raw_file
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        jobId,
-        result.source,
-        result.source_id,
-        result.company,
-        result.position,
-        result.location,
-        result.employment_type,
-        result.company_size || null,
-        result.employee_count || null,
-        result.raw_url,
-        result.deadline || null,
-        result.salary_text || null,
+      pendingResults.push({
+        result,
+        fingerprint,
+        filterReason: filterResult.reason || null,
         status,
-        filterResult.reason || null,
-        `raw/${jobId}.md`
-      );
-
-      db.prepare(
-        "INSERT INTO job_fingerprints (fingerprint, job_id, source) VALUES (?, ?, ?)"
-      ).run(fingerprint, jobId, result.source);
-
-      const rawContent = [
-        `# ${result.company} - ${result.position}`,
-        `- source: ${result.source}`,
-        `- url: ${result.raw_url}`,
-        `- collected_at: ${new Date().toISOString()}`,
-        "",
-        "# 원문 JD",
-        result.raw_text,
-      ].join("\n");
-
-      saveRawJob(jobId, rawContent);
+      });
 
       if (filterResult.passed) {
         stats.passed_count += 1;
@@ -181,6 +163,72 @@ export async function runScan(
       }
 
       stats.new_count += 1;
+    }
+
+    const insertJob = db.prepare(`
+      INSERT INTO jobs (
+        job_id,
+        source,
+        source_id,
+        company,
+        position,
+        location,
+        employment_type,
+        company_size,
+        employee_count,
+        raw_url,
+        deadline,
+        salary_text,
+        status,
+        filter_reason,
+        raw_file
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertFingerprint = db.prepare(
+      "INSERT INTO job_fingerprints (fingerprint, job_id, source) VALUES (?, ?, ?)"
+    );
+    const persistPendingResults = db.transaction((items: PendingResult[]) => {
+      for (const item of items) {
+        const jobId = generateJobId();
+        const rawFilePath = saveRawJob(jobId, buildRawContent(item.result));
+
+        createdRawFiles.push(rawFilePath);
+
+        insertJob.run(
+          jobId,
+          item.result.source,
+          item.result.source_id,
+          item.result.company,
+          item.result.position,
+          item.result.location,
+          item.result.employment_type,
+          item.result.company_size || null,
+          item.result.employee_count || null,
+          item.result.raw_url,
+          item.result.deadline || null,
+          item.result.salary_text || null,
+          item.status,
+          item.filterReason,
+          rawFilePath
+        );
+
+        insertFingerprint.run(item.fingerprint, jobId, item.result.source);
+      }
+    });
+
+    try {
+      persistPendingResults(pendingResults);
+    } catch (error) {
+      for (const rawFilePath of createdRawFiles) {
+        try {
+          deleteRawJob(rawFilePath);
+        } catch {
+          // Preserve the original scan error.
+        }
+      }
+
+      throw error;
     }
 
     db.prepare(`

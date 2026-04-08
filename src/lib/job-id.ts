@@ -1,11 +1,8 @@
-import { getDb } from "@/lib/db";
+import crypto from "crypto";
 
 export function generateJobId(): string {
-  const db = getDb();
-  const row = db.prepare("SELECT COUNT(*) as count FROM jobs").get() as {
-    count: number;
-  };
-  const next = row.count + 1;
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const randomSuffix = crypto.randomBytes(3).toString("hex").toUpperCase();
 
-  return `JOB-${String(next).padStart(4, "0")}`;
+  return `JOB-${timestamp}-${randomSuffix}`;
 }

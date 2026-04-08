@@ -227,4 +227,18 @@ describe("Jobs API routes", () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "Not found" });
   });
+
+  it("returns 404 when updating a missing job", async () => {
+    const jobRoute = await import("@/app/api/jobs/[jobId]/route");
+
+    const response = await jobRoute.PUT(
+      makeRequest("http://localhost/api/jobs/MISSING", "PUT", {
+        status: "matched",
+      }),
+      { params: Promise.resolve({ jobId: "MISSING" }) }
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Not found" });
+  });
 });

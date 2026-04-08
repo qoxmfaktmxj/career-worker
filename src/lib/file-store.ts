@@ -116,6 +116,16 @@ export function readRawJob(jobId: string): string {
   return fs.readFileSync(path.join(jobsDir(), "raw", `${jobId}.md`), "utf-8");
 }
 
+export function deleteRawJob(relativePath: string): void {
+  const filePath = path.join(jobsDir(), relativePath);
+
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  fs.unlinkSync(filePath);
+}
+
 export function saveNormalizedJob(
   jobId: string,
   data: Record<string, unknown>

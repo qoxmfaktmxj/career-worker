@@ -19,12 +19,20 @@ export async function POST(
   }
 
   const config = JSON.parse(source.config) as Record<string, unknown>;
-  const result = await runScan(
-    source.id,
-    source.channel,
-    config,
-    DEFAULT_FILTER_CONFIG
-  );
 
-  return NextResponse.json(result);
+  try {
+    const result = await runScan(
+      source.id,
+      source.channel,
+      config,
+      DEFAULT_FILTER_CONFIG
+    );
+
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
+  }
 }
