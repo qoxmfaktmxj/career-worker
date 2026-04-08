@@ -3,11 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateSession } from "@/lib/auth";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_ASSET_PATTERN =
+  /\.(?:png|jpg|jpeg|gif|webp|svg|ico|avif)$/i;
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.some((publicPath) => pathname.startsWith(publicPath))) {
+    return NextResponse.next();
+  }
+
+  if (PUBLIC_ASSET_PATTERN.test(pathname)) {
     return NextResponse.next();
   }
 

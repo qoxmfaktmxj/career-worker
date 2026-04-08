@@ -70,4 +70,14 @@ describe("Proxy", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
+
+  it("allows public image assets without a session", async () => {
+    const { proxy } = await import("@/proxy");
+    const request = new NextRequest("http://localhost/duck-mark.png");
+
+    const response = proxy(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
 });
