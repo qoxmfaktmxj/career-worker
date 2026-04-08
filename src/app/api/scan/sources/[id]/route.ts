@@ -31,7 +31,11 @@ export async function PUT(
   }
 
   values.push(id);
-  db.prepare(`UPDATE sources SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+  const result = db.prepare(`UPDATE sources SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+
+  if (result.changes === 0) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({ success: true });
 }

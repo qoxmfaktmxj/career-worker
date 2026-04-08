@@ -37,8 +37,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  db.prepare("DELETE FROM outputs WHERE id = ?").run(id);
   deleteOutput(output.file_path);
+  db.prepare("DELETE FROM outputs WHERE id = ?").run(id);
 
   return NextResponse.json({ success: true });
 }

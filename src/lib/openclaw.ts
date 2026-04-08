@@ -98,7 +98,18 @@ export async function callOpenClaw(
   }
 }
 
+const ALLOWED_PROMPTS = new Set([
+  "evaluate-fit",
+  "generate-answer-pack",
+  "generate-resume",
+  "recruiter-reply",
+]);
+
 export function loadPromptTemplate(promptName: string): string {
+  if (!ALLOWED_PROMPTS.has(promptName)) {
+    throw new Error(`Unknown prompt: ${promptName}`);
+  }
+
   const promptPath = path.join(
     /*turbopackIgnore: true*/ process.cwd(),
     "src",

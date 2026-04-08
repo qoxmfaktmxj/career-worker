@@ -62,7 +62,14 @@ export function verifyPassword(input: string): boolean {
     return false;
   }
 
-  return input === storedPassword;
+  const inputBuffer = Buffer.from(input);
+  const storedBuffer = Buffer.from(storedPassword);
+
+  if (inputBuffer.length !== storedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(inputBuffer, storedBuffer);
 }
 
 export function createSession(): string {
