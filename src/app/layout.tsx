@@ -32,7 +32,11 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: "Career Worker",
-  description: "채용 워크스페이스. 공고 수집, 판단, 초안 작성.",
+  description: "채용 워크스페이스. 공고 수집, 진단, 초안 작성.",
+  icons: {
+    icon: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/apple-touch-icon.png" }],
+  },
 };
 
 export default function RootLayout({

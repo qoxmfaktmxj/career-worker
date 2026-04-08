@@ -70,7 +70,8 @@ export default function ProfilePage() {
   };
 
   const activeDoc = TABS.find((tab) => tab.key === activeTab) ?? TABS[0];
-  const showProfileSummary = activeTab === "profile.yml" && !editingProfile;
+  const isProfileTab = activeTab === "profile.yml";
+  const showProfileSummary = isProfileTab && !editingProfile;
   const profileSummary = (() => {
     if (!content["profile.yml"]) {
       return [];
@@ -113,7 +114,10 @@ export default function ProfilePage() {
           {TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setEditingProfile(false);
+              }}
               className={`border-b-2 px-4 py-3 text-sm transition ${
                 activeTab === tab.key
                   ? "border-accent text-[var(--foreground)]"
@@ -134,18 +138,20 @@ export default function ProfilePage() {
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() =>
-                activeTab === "profile.yml"
-                  ? setEditingProfile((current) => !current)
-                  : undefined
-              }
-              className="text-accent font-data text-sm"
-            >
-              {activeTab === "profile.yml" ? "profile.md" : activeDoc.key}
-            </button>
-            {editingProfile || activeTab !== "profile.yml" ? (
+            {isProfileTab ? (
+              <button
+                type="button"
+                onClick={() => setEditingProfile((current) => !current)}
+                className="text-accent font-data text-sm"
+              >
+                {editingProfile ? "요약 보기" : "YAML 편집"}
+              </button>
+            ) : (
+              <span className="font-data text-sm text-[var(--muted-foreground)]">
+                {activeDoc.key}
+              </span>
+            )}
+            {editingProfile || !isProfileTab ? (
               <button
                 onClick={() => void save()}
                 disabled={saving}

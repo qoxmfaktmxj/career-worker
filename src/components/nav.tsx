@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -22,9 +23,18 @@ export function Nav() {
     <aside className="border-r border-[var(--border)] bg-white text-[var(--foreground)]">
       <div className="sticky top-0 flex min-h-screen flex-col">
         <div className="px-5 pb-4 pt-6">
-          <h1 className="font-heading text-[15px] font-semibold text-[var(--foreground)]">
-            채용 작업실
-          </h1>
+          <div className="flex items-center gap-2">
+            <Image
+              src="/duck-mark.png"
+              alt="오리 아이콘"
+              width={20}
+              height={20}
+              className="h-5 w-5"
+            />
+            <h1 className="font-heading text-[15px] font-semibold text-[var(--foreground)]">
+              채용 작업실
+            </h1>
+          </div>
         </div>
 
         <nav className="flex-1 px-2 py-2">

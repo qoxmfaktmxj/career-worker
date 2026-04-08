@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -45,9 +46,19 @@ export default function LoginPage() {
             <div className="bg-accent-soft w-1/3" />
           </div>
           <div className="px-9 pb-4 pt-10">
-            <h1 className="font-heading text-center text-[24px] font-bold text-[var(--foreground)]">
-              채용 작업실
-            </h1>
+            <div className="flex items-center justify-center gap-3">
+              <Image
+                src="/duck-mark.png"
+                alt="오리 아이콘"
+                width={28}
+                height={28}
+                className="h-7 w-7"
+                priority
+              />
+              <h1 className="font-heading text-center text-[24px] font-bold text-[var(--foreground)]">
+                채용 작업실
+              </h1>
+            </div>
             <p className="mt-3 text-center text-[14px] text-[var(--muted-foreground)]">
               작업실 잠금 해제
             </p>
