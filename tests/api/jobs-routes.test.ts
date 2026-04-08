@@ -187,6 +187,39 @@ describe("Jobs API routes", () => {
     });
   });
 
+  it("rejects manual job creation when the raw URL already exists", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO jobs (
+        job_id, source, company, position, raw_url, status
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-EXISTS-1",
+      "saramin",
+      "Existing Corp",
+      "Existing Role",
+      "https://example.com/duplicate-job",
+      "passed"
+    );
+
+    const jobsRoute = await import("@/app/api/jobs/route");
+    const response = await jobsRoute.POST(
+      makeRequest("http://localhost/api/jobs", "POST", {
+        company: "Manual Corp",
+        position: "Platform Engineer",
+        rawText: "duplicate",
+        rawUrl: "https://example.com/duplicate-job",
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Job already exists",
+      job_id: "JOB-EXISTS-1",
+    });
+  });
+
   it("returns dashboard stats for current jobs", async () => {
     const { getDb } = await import("@/lib/db");
     const db = getDb();

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, startTransition, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { JobTable, type JobTableJob } from "@/components/job-table";
 
@@ -18,7 +19,17 @@ const SOURCE_OPTIONS = [
   { value: "saramin", label: "사람인" },
   { value: "jobkorea", label: "잡코리아" },
   { value: "remember", label: "리멤버" },
+  { value: "manual", label: "직접 저장" },
 ];
+
+const EMPTY_CREATE_FORM = {
+  company: "",
+  position: "",
+  rawText: "",
+  rawUrl: "",
+  location: "",
+  deadline: "",
+};
 
 async function fetchJobs(params: {
   status: string;
@@ -44,10 +55,15 @@ async function fetchJobs(params: {
 }
 
 export default function JobsPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<JobTableJob[]>([]);
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
   const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +87,42 @@ export default function JobsPage() {
     startTransition(() => setJobs(data));
   };
 
+  const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreating(true);
+    setCreateError("");
+
+    try {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company: createForm.company,
+          position: createForm.position,
+          rawText: createForm.rawText,
+          rawUrl: createForm.rawUrl || undefined,
+          location: createForm.location || undefined,
+          deadline: createForm.deadline || undefined,
+        }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        job_id?: string;
+      };
+
+      if ((response.status === 201 || response.status === 409) && data.job_id) {
+        setShowCreate(false);
+        setCreateForm(EMPTY_CREATE_FORM);
+        router.push(`/jobs/${data.job_id}`);
+        return;
+      }
+
+      setCreateError(data.error || "공고를 저장하지 못했습니다.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const selectedStatus =
     STATUS_OPTIONS.find((option) => option.value === status)?.label || "진행 상태";
   const selectedSource =
@@ -78,8 +130,18 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="bg-[#0a0a0a] px-10 py-7 text-white">
+      <section className="flex items-center gap-4 bg-[#0a0a0a] px-10 py-7 text-white">
         <h1 className="font-heading text-[28px] font-bold">공고 검토</h1>
+        <div className="flex-1" />
+        <button
+          onClick={() => {
+            setCreateError("");
+            setShowCreate(true);
+          }}
+          className="bg-accent rounded-[4px] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+        >
+          직접 저장
+        </button>
       </section>
 
       <section className="grid min-h-[calc(100vh-92px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_220px]">
@@ -142,10 +204,10 @@ export default function JobsPage() {
                     <path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5" />
                   </svg>
                   <p className="mt-5 text-[15px] font-medium text-[var(--foreground)]">
-                    주간에 해당하는 공고가 없습니다.
+                    조건에 해당하는 공고가 없습니다.
                   </p>
                   <p className="font-caption mt-3 text-[13px] text-[var(--muted-foreground)]">
-                    필터 조건을 변경하거나 다른 기준을 선택해 보세요.
+                    필터 조건을 변경하거나 직접 저장으로 공고를 추가해 보세요.
                   </p>
                 </div>
               </div>
@@ -185,6 +247,116 @@ export default function JobsPage() {
           </button>
         </aside>
       </section>
+
+      {showCreate ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,10,10,0.28)] px-6">
+          <section className="w-full max-w-[760px] rounded-[4px] border border-[var(--border)] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.14)]">
+            <div className="border-b border-[var(--border)] px-8 py-5">
+              <h2 className="font-heading text-[20px] font-semibold text-[var(--foreground)]">
+                공고 직접 저장
+              </h2>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                스캔 없이 공고를 바로 등록합니다. 회사명, 포지션, JD 본문은 필수입니다.
+              </p>
+            </div>
+            <form onSubmit={handleCreate} className="grid gap-4 px-8 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  required
+                  value={createForm.company}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      company: event.target.value,
+                    }))
+                  }
+                  placeholder="회사명"
+                  className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
+                />
+                <input
+                  required
+                  value={createForm.position}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      position: event.target.value,
+                    }))
+                  }
+                  placeholder="포지션"
+                  className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
+                />
+                <input
+                  value={createForm.rawUrl}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      rawUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="공고 URL (선택)"
+                  className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none md:col-span-2"
+                />
+                <input
+                  value={createForm.location}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      location: event.target.value,
+                    }))
+                  }
+                  placeholder="근무지 (선택)"
+                  className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
+                />
+                <input
+                  type="date"
+                  value={createForm.deadline}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      deadline: event.target.value,
+                    }))
+                  }
+                  className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
+                />
+              </div>
+
+              <textarea
+                required
+                value={createForm.rawText}
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    rawText: event.target.value,
+                  }))
+                }
+                placeholder="JD 본문을 붙여 넣어 주세요."
+                className="focus-accent min-h-[260px] rounded-[4px] border border-[var(--border)] bg-white px-3 py-3 text-sm outline-none"
+              />
+
+              {createError ? (
+                <p className="text-sm text-[#c24444]">{createError}</p>
+              ) : null}
+
+              <div className="flex justify-end gap-3 border-t border-[var(--border)] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="rounded-[4px] border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted-foreground)]"
+                >
+                  닫기
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="bg-accent rounded-[4px] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {creating ? "저장 중..." : "저장 후 상세 보기"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

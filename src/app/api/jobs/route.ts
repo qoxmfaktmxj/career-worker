@@ -91,6 +91,21 @@ export async function POST(request: NextRequest) {
   }
 
   const db = getDb();
+  const rawUrl = body.rawUrl?.trim() || null;
+
+  if (rawUrl) {
+    const existing = db
+      .prepare("SELECT job_id FROM jobs WHERE raw_url = ? LIMIT 1")
+      .get(rawUrl) as { job_id: string } | undefined;
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Job already exists", job_id: existing.job_id },
+        { status: 409 }
+      );
+    }
+  }
+
   const jobId = generateJobId();
   const rawFilePath = saveRawJob(
     jobId,
@@ -98,7 +113,7 @@ export async function POST(request: NextRequest) {
       company,
       position,
       rawText,
-      rawUrl: body.rawUrl?.trim() || undefined,
+      rawUrl: rawUrl || undefined,
     })
   );
 
@@ -129,7 +144,7 @@ export async function POST(request: NextRequest) {
     body.employmentType?.trim() || null,
     body.companySize?.trim() || null,
     body.employeeCount || null,
-    body.rawUrl?.trim() || null,
+    rawUrl,
     body.deadline?.trim() || null,
     body.salaryText?.trim() || null,
     "passed",

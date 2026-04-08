@@ -22,6 +22,7 @@ const SOURCE_LABELS: Record<string, string> = {
   saramin: "사람인",
   jobkorea: "잡코리아",
   remember: "리멤버",
+  manual: "직접 저장",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -55,7 +56,7 @@ export function JobTable({
   jobs,
   showScore = true,
   emptyTitle = "조건에 맞는 공고가 없습니다.",
-  emptyDescription = "필터 조건을 바꾸거나 다른 기준으로 다시 확인해 보세요.",
+  emptyDescription = "필터 조건을 바꾸거나 다른 키워드로 다시 확인해 보세요.",
 }: JobTableProps) {
   if (jobs.length === 0) {
     return (
@@ -113,7 +114,9 @@ export function JobTable({
               <td className="px-5 py-4 text-[var(--muted-foreground)]">
                 {SOURCE_LABELS[job.source] ?? job.source}
               </td>
-              <td className="px-5 py-4 text-[var(--muted-foreground)]">{dDay(job.deadline)}</td>
+              <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                {dDay(job.deadline)}
+              </td>
               {showScore ? (
                 <td className="font-data px-5 py-4 text-[var(--foreground)]">
                   {job.fit_score !== null ? job.fit_score.toFixed(1) : "-"}
