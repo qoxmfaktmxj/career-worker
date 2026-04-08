@@ -14,9 +14,9 @@ export function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+      className="rounded-[4px] border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--muted-foreground)] transition hover:bg-[#fafbfc]"
     >
-      {copied ? "복사됨" : "복사"}
+      {copied ? "\uBCF5\uC0AC\uB428" : "\uBCF5\uC0AC"}
     </button>
   );
 }

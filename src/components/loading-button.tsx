@@ -31,7 +31,7 @@ export function LoadingButton({
     <button
       onClick={handleClick}
       disabled={loading}
-      className={`rounded-2xl px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`h-10 rounded-[4px] border border-transparent px-4 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {loading ? loadingLabel : label}
     </button>
