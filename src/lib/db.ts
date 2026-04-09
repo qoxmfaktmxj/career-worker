@@ -133,6 +133,13 @@ function initSchema(database: Database.Database): void {
       FOREIGN KEY (source_id) REFERENCES sources(id)
     );
 
+    CREATE TABLE IF NOT EXISTS scan_source_locks (
+      source_id   INTEGER PRIMARY KEY,
+      acquired_at TEXT DEFAULT (datetime('now')),
+      expires_at  TEXT NOT NULL,
+      FOREIGN KEY (source_id) REFERENCES sources(id)
+    );
+
     CREATE TABLE IF NOT EXISTS outputs (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       job_id      TEXT NOT NULL,
@@ -165,8 +172,43 @@ function initSchema(database: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_jobs_fit_score ON jobs(fit_score);
     CREATE INDEX IF NOT EXISTS idx_fingerprints_fp ON job_fingerprints(fingerprint);
     CREATE INDEX IF NOT EXISTS idx_scan_runs_source ON scan_runs(source_id);
+    CREATE INDEX IF NOT EXISTS idx_scan_source_locks_expires ON scan_source_locks(expires_at);
     CREATE INDEX IF NOT EXISTS idx_outputs_job ON outputs(job_id);
   `);
+
+  ensureUniqueIndex(
+    database,
+    `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_raw_url_unique
+      ON jobs(raw_url)
+      WHERE raw_url IS NOT NULL AND raw_url != ''
+    `,
+    `
+      SELECT raw_url
+      FROM jobs
+      WHERE raw_url IS NOT NULL AND raw_url != ''
+      GROUP BY raw_url
+      HAVING COUNT(*) > 1
+      LIMIT 1
+    `
+  );
+
+  ensureUniqueIndex(
+    database,
+    `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_source_source_id_unique
+      ON jobs(source, source_id)
+      WHERE source_id IS NOT NULL AND source_id != '' AND source != 'manual'
+    `,
+    `
+      SELECT source, source_id
+      FROM jobs
+      WHERE source_id IS NOT NULL AND source_id != '' AND source != 'manual'
+      GROUP BY source, source_id
+      HAVING COUNT(*) > 1
+      LIMIT 1
+    `
+  );
 }
 
 function getTableColumns(
@@ -196,6 +238,29 @@ function ensureColumns(
       `ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.definition}`
     );
   }
+}
+
+function hasDuplicateRows(
+  database: Database.Database,
+  duplicateSql: string
+): boolean {
+  const duplicate = database.prepare(duplicateSql).get() as
+    | Record<string, unknown>
+    | undefined;
+
+  return Boolean(duplicate);
+}
+
+function ensureUniqueIndex(
+  database: Database.Database,
+  indexSql: string,
+  duplicateSql: string
+): void {
+  if (hasDuplicateRows(database, duplicateSql)) {
+    return;
+  }
+
+  database.exec(indexSql);
 }
 
 function migrateSchema(database: Database.Database): void {

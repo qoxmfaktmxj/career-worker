@@ -4,10 +4,9 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { password } = body as { password?: string };
   const { createSession, verifyPassword } = await import("@/lib/auth");
-
   if (!password || !verifyPassword(password)) {
     return NextResponse.json(
-      { error: "비밀번호가 틀렸습니다" },
+      { error: "비밀번호가 올바르지 않습니다" },
       { status: 401 }
     );
   }
@@ -26,8 +25,10 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const { deleteSession } = await import("@/lib/auth");
   const response = NextResponse.json({ success: true });
+  deleteSession(request.cookies.get("session_id")?.value);
   response.cookies.delete("session_id");
 
   return response;

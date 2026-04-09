@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SUPPORTED_CHANNELS = new Set(["saramin", "jobkorea", "remember"]);
-
 export async function GET() {
   const { getDb } = await import("@/lib/db");
   const db = getDb();
@@ -18,7 +16,9 @@ export async function POST(request: NextRequest) {
     name?: string;
     config?: unknown;
   };
-  const { channel, name, config } = body;
+  const channel = body.channel?.trim();
+  const name = body.name?.trim();
+  const { config } = body;
 
   if (!channel || !name || !config) {
     return NextResponse.json(
@@ -27,9 +27,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!SUPPORTED_CHANNELS.has(channel)) {
+  const { SUPPORTED_SCAN_CHANNELS, validateScanSourceConfig } = await import(
+    "@/lib/scan-source-config"
+  );
+
+  if (
+    !(SUPPORTED_SCAN_CHANNELS as readonly string[]).includes(channel)
+  ) {
     return NextResponse.json(
       { error: "Unsupported channel" },
+      { status: 400 }
+    );
+  }
+
+  let normalizedConfig;
+
+  try {
+    normalizedConfig = validateScanSourceConfig(config);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "invalid source config",
+        details: (error as { details?: string[] }).details || [],
+      },
       { status: 400 }
     );
   }
@@ -38,7 +58,7 @@ export async function POST(request: NextRequest) {
   const db = getDb();
   const result = db
     .prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
-    .run(channel, name, JSON.stringify(config));
+    .run(channel, name.trim(), JSON.stringify(normalizedConfig));
 
   return NextResponse.json({ id: result.lastInsertRowid }, { status: 201 });
 }

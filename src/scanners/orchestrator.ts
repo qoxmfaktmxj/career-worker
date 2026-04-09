@@ -1,33 +1,28 @@
-import crypto from "crypto";
-
 import { getDb } from "@/lib/db";
 import { applyFilter, type FilterConfig } from "@/lib/filters";
+import {
+  findExistingJob,
+  makeJobFingerprint,
+  normalizeRawUrl,
+  registerJobFingerprint,
+} from "@/lib/job-dedupe";
 import {
   deleteStoredJobMarkdown,
   saveDetailJob,
   saveListingJob,
 } from "@/lib/job-file-store";
 import { generateJobId } from "@/lib/job-id";
+import { acquireScanLock, releaseScanLock } from "@/lib/scan-lock";
 import { jobkoreaScanner } from "@/scanners/jobkorea";
 import { rememberScanner } from "@/scanners/remember";
 import { saraminScanner } from "@/scanners/saramin";
-import type { ScanResult, Scanner } from "@/scanners/types";
+import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
 
 const SCANNERS: Record<string, Scanner> = {
   saramin: saraminScanner,
   jobkorea: jobkoreaScanner,
   remember: rememberScanner,
 };
-
-function makeFingerprint(result: ScanResult): string {
-  const input = `${result.raw_url}|${result.company}|${result.position}`;
-
-  return crypto
-    .createHash("sha256")
-    .update(input)
-    .digest("hex")
-    .slice(0, 32);
-}
 
 function getListingText(result: ScanResult): string {
   return result.listing_text || result.raw_text || "";
@@ -146,7 +141,7 @@ async function collectDetailContent(
 export async function runScan(
   sourceId: number,
   channel: string,
-  config: Record<string, unknown>,
+  config: ScannerConfig,
   filterConfig: FilterConfig
 ): Promise<ScanRunResult> {
   const db = getDb();
@@ -156,19 +151,17 @@ export async function runScan(
     throw new Error(`Unknown channel: ${channel}`);
   }
 
+  acquireScanLock(sourceId);
+
+  let runId: number | null = null;
+
   const run = db
     .prepare("INSERT INTO scan_runs (source_id, status) VALUES (?, ?)")
     .run(sourceId, "running");
-  const runId = run.lastInsertRowid;
+  runId = Number(run.lastInsertRowid);
 
   try {
-    const scannerConfig = {
-      keywords: (config.keywords as string[]) || [],
-      location_codes: (config.location_codes as string[]) || [],
-      exclude_keywords: (config.exclude_keywords as string[]) || [],
-    };
-
-    const results = await scanner.scan(scannerConfig);
+    const results = await scanner.scan(config);
     const stats: ScanRunResult = {
       total_found: results.length,
       new_count: 0,
@@ -181,18 +174,13 @@ export async function runScan(
     const createdJobFiles: string[] = [];
 
     for (const result of results) {
-      const fingerprint = makeFingerprint(result);
+      const fingerprint = makeJobFingerprint({
+        rawUrl: result.raw_url,
+        company: result.company,
+        position: result.position,
+      });
 
       if (seenFingerprints.has(fingerprint)) {
-        stats.duplicate_count += 1;
-        continue;
-      }
-
-      const existing = db
-        .prepare("SELECT id FROM job_fingerprints WHERE fingerprint = ?")
-        .get(fingerprint);
-
-      if (existing) {
         stats.duplicate_count += 1;
         continue;
       }
@@ -224,14 +212,6 @@ export async function runScan(
         detailContent,
         detailStatus,
       });
-
-      if (filterResult.passed) {
-        stats.passed_count += 1;
-      } else {
-        stats.filtered_count += 1;
-      }
-
-      stats.new_count += 1;
     }
 
     const insertJob = db.prepare(`
@@ -264,11 +244,21 @@ export async function runScan(
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const insertFingerprint = db.prepare(
-      "INSERT INTO job_fingerprints (fingerprint, job_id, source) VALUES (?, ?, ?)"
-    );
     const persistPendingResults = db.transaction((items: PendingResult[]) => {
       for (const item of items) {
+        const duplicateMatch = findExistingJob(db, {
+          source: item.result.source,
+          sourceId: item.result.source_id,
+          rawUrl: normalizeRawUrl(item.result.raw_url),
+          company: item.result.company,
+          position: item.result.position,
+        });
+
+        if (duplicateMatch) {
+          stats.duplicate_count += 1;
+          continue;
+        }
+
         const jobId = generateJobId();
         const listingFilePath = saveListingJob(jobId, item.listingContent);
         createdJobFiles.push(listingFilePath);
@@ -314,7 +304,15 @@ export async function runScan(
           detailFilePath ?? listingFilePath
         );
 
-        insertFingerprint.run(item.fingerprint, jobId, item.result.source);
+        registerJobFingerprint(db, item.fingerprint, jobId, item.result.source);
+
+        if (item.status === "passed") {
+          stats.passed_count += 1;
+        } else {
+          stats.filtered_count += 1;
+        }
+
+        stats.new_count += 1;
       }
     });
 
@@ -359,14 +357,18 @@ export async function runScan(
   } catch (error) {
     const scanError = error as Error;
 
-    db.prepare(`
-      UPDATE scan_runs
-      SET status = 'failed',
-          finished_at = datetime('now'),
-          error_message = ?
-      WHERE id = ?
-    `).run(scanError.message, runId);
+    if (runId !== null) {
+      db.prepare(`
+        UPDATE scan_runs
+        SET status = 'failed',
+            finished_at = datetime('now'),
+            error_message = ?
+        WHERE id = ?
+      `).run(scanError.message, runId);
+    }
 
     throw error;
+  } finally {
+    releaseScanLock(sourceId);
   }
 }

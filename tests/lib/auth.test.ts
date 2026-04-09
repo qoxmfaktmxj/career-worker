@@ -1,49 +1,79 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "fs";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_PASSWORD = "test-pass-123";
-const TEST_SECRET = "test-session-secret-1234567890";
+const TEST_DB_PATH = path.join(__dirname, "../../data/test-auth.db");
+const TEST_DATA_DIR = path.join(__dirname, "../../data");
 
 describe("Auth", () => {
   beforeEach(() => {
     vi.resetModules();
 
     process.env.AUTH_PASSWORD = TEST_PASSWORD;
-    process.env.SESSION_SECRET = TEST_SECRET;
+    process.env.DATA_DIR = TEST_DATA_DIR;
+    process.env.DB_NAME = "test-auth.db";
+
+    if (fs.existsSync(TEST_DB_PATH)) {
+      fs.unlinkSync(TEST_DB_PATH);
+    }
   });
 
-  it("should reject wrong password", async () => {
+  afterEach(async () => {
+    try {
+      const { closeDb } = await import("@/lib/db");
+      closeDb();
+    } catch {
+      // ignore cleanup errors
+    }
+
+    vi.resetModules();
+
+    if (fs.existsSync(TEST_DB_PATH)) {
+      fs.unlinkSync(TEST_DB_PATH);
+    }
+  });
+
+  it("rejects wrong password", async () => {
     const { verifyPassword } = await import("@/lib/auth");
 
     expect(verifyPassword("wrong")).toBe(false);
   });
 
-  it("should accept correct password", async () => {
+  it("accepts correct password", async () => {
     const { verifyPassword } = await import("@/lib/auth");
 
     expect(verifyPassword(TEST_PASSWORD)).toBe(true);
   });
 
-  it("should create and validate session", async () => {
+  it("creates a persisted session row and validates it", async () => {
     const { createSession, validateSession } = await import("@/lib/auth");
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
 
     const sessionId = createSession();
+    const stored = db
+      .prepare("SELECT id FROM sessions WHERE id = ?")
+      .get(sessionId) as { id: string } | undefined;
 
-    expect(sessionId).toBeTruthy();
+    expect(stored?.id).toBe(sessionId);
     expect(validateSession(sessionId)).toBe(true);
   });
 
-  it("should reject expired or missing session", async () => {
+  it("rejects unknown sessions", async () => {
     const { validateSession } = await import("@/lib/auth");
 
     expect(validateSession("nonexistent-id")).toBe(false);
   });
 
-  it("should reject a tampered session token", async () => {
-    const { createSession, validateSession } = await import("@/lib/auth");
+  it("deletes sessions on logout", async () => {
+    const { createSession, deleteSession, validateSession } = await import(
+      "@/lib/auth"
+    );
 
     const sessionId = createSession();
-    const tamperedSessionId = `${sessionId}tampered`;
+    deleteSession(sessionId);
 
-    expect(validateSession(tamperedSessionId)).toBe(false);
+    expect(validateSession(sessionId)).toBe(false);
   });
 });

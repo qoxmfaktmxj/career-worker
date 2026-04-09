@@ -200,103 +200,143 @@ export async function POST(request: NextRequest) {
 
   const { getDb } = await import("@/lib/db");
   const {
+    deleteStoredJobMarkdown,
     saveDetailJob,
     saveListingJob,
   } = await import("@/lib/job-file-store");
+  const {
+    findExistingJob,
+    makeJobFingerprint,
+    normalizeRawUrl,
+    registerJobFingerprint,
+  } = await import("@/lib/job-dedupe");
   const db = getDb();
-  const rawUrl = body.rawUrl?.trim() || null;
+  const rawUrl = normalizeRawUrl(body.rawUrl);
+  const duplicateMatch = findExistingJob(db, {
+    source: "manual",
+    rawUrl,
+    company,
+    position,
+  });
 
-  if (rawUrl) {
-    const existing = db
-      .prepare("SELECT job_id FROM jobs WHERE raw_url = ? LIMIT 1")
-      .get(rawUrl) as { job_id: string } | undefined;
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "Job already exists", job_id: existing.job_id },
-        { status: 409 }
-      );
-    }
+  if (duplicateMatch) {
+    return NextResponse.json(
+      { error: "Job already exists", job_id: duplicateMatch.jobId },
+      { status: 409 }
+    );
   }
 
   const jobId = generateJobId();
-  const listingFilePath = saveListingJob(
-    jobId,
-    buildManualListingContent({
-      company,
-      position,
-      rawUrl: rawUrl || undefined,
-      location: body.location?.trim() || undefined,
-      employmentType: body.employmentType?.trim() || undefined,
-      deadline: body.deadline?.trim() || undefined,
-      salaryText: body.salaryText?.trim() || undefined,
-    })
-  );
-  const detailFilePath = saveDetailJob(
-    jobId,
-    buildManualDetailContent({
-      company,
-      position,
-      rawText,
-      rawUrl: rawUrl || undefined,
-    })
-  );
+  const fingerprint = makeJobFingerprint({ rawUrl, company, position });
+  let listingFilePath: string | null = null;
+  let detailFilePath: string | null = null;
   const deadline = normalizeDeadline(body.deadline?.trim());
-
-  db.prepare(`
-    INSERT INTO jobs (
-      job_id,
-      source,
+  const insertManualJob = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO jobs (
+        job_id,
+        source,
+        company,
+        position,
+        location,
+        employment_type,
+        company_size,
+        employee_count,
+        raw_url,
+        deadline,
+        deadline_text,
+        deadline_date,
+        deadline_parse_status,
+        salary_text,
+        status,
+        fit_status,
+        workflow_status,
+        application_status,
+        memo,
+        listing_file,
+        detail_file,
+        detail_collected_at,
+        detail_status,
+        raw_file
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      jobId,
+      "manual",
       company,
       position,
-      location,
-      employment_type,
-      company_size,
-      employee_count,
-      raw_url,
-      deadline,
-      deadline_text,
-      deadline_date,
-      deadline_parse_status,
-      salary_text,
-      status,
-      fit_status,
-      workflow_status,
-      application_status,
-      memo,
-      listing_file,
-      detail_file,
-      detail_collected_at,
-      detail_status,
-      raw_file
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    jobId,
-    "manual",
-    company,
-    position,
-    body.location?.trim() || null,
-    body.employmentType?.trim() || null,
-    body.companySize?.trim() || null,
-    body.employeeCount || null,
-    rawUrl,
-    deadline.deadlineValue,
-    deadline.deadlineText,
-    deadline.deadlineDate,
-    deadline.parseStatus,
-    body.salaryText?.trim() || null,
-    "passed",
-    "passed",
-    "detail_ready",
-    "not_started",
-    body.memo?.trim() || null,
-    listingFilePath,
-    detailFilePath,
-    new Date().toISOString(),
-    "ready",
-    detailFilePath
-  );
+      body.location?.trim() || null,
+      body.employmentType?.trim() || null,
+      body.companySize?.trim() || null,
+      body.employeeCount || null,
+      rawUrl,
+      deadline.deadlineValue,
+      deadline.deadlineText,
+      deadline.deadlineDate,
+      deadline.parseStatus,
+      body.salaryText?.trim() || null,
+      "passed",
+      "passed",
+      "detail_ready",
+      "not_started",
+      body.memo?.trim() || null,
+      listingFilePath,
+      detailFilePath,
+      new Date().toISOString(),
+      "ready",
+      detailFilePath
+    );
+    registerJobFingerprint(db, fingerprint, jobId, "manual");
+  });
+
+  try {
+    listingFilePath = saveListingJob(
+      jobId,
+      buildManualListingContent({
+        company,
+        position,
+        rawUrl: rawUrl || undefined,
+        location: body.location?.trim() || undefined,
+        employmentType: body.employmentType?.trim() || undefined,
+        deadline: body.deadline?.trim() || undefined,
+        salaryText: body.salaryText?.trim() || undefined,
+      })
+    );
+    detailFilePath = saveDetailJob(
+      jobId,
+      buildManualDetailContent({
+        company,
+        position,
+        rawText,
+        rawUrl: rawUrl || undefined,
+      })
+    );
+    insertManualJob();
+  } catch (error) {
+    if (listingFilePath) {
+      deleteStoredJobMarkdown(listingFilePath);
+    }
+
+    if (detailFilePath) {
+      deleteStoredJobMarkdown(detailFilePath);
+    }
+
+    const existing = findExistingJob(db, {
+      source: "manual",
+      rawUrl,
+      company,
+      position,
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Job already exists", job_id: existing.jobId },
+        { status: 409 }
+      );
+    }
+
+    throw error;
+  }
 
   return NextResponse.json({ job_id: jobId }, { status: 201 });
 }

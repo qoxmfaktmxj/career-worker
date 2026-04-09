@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEFAULT_FILTER_CONFIG } from "@/lib/filters";
+import { ScanAlreadyRunningError } from "@/lib/scan-lock";
 import {
   formatMissingScannerConfigMessage,
   getMissingScannerConfig,
@@ -10,9 +11,11 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   const { sourceId } = await params;
-  const [{ getDb }, { runScan }] = await Promise.all([
+  const [{ getDb }, { runScan }, { parseStoredScanSourceConfig }] =
+    await Promise.all([
     import("@/lib/db"),
     import("@/scanners/orchestrator"),
+    import("@/lib/scan-source-config"),
   ]);
   const db = getDb();
   const source = db
@@ -23,7 +26,20 @@ export async function POST(
     return NextResponse.json({ error: "Source not found" }, { status: 404 });
   }
 
-  const config = JSON.parse(source.config) as Record<string, unknown>;
+  let config;
+
+  try {
+    config = parseStoredScanSourceConfig(source.config);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "invalid source config",
+        details: (error as { details?: string[] }).details || [],
+      },
+      { status: 400 }
+    );
+  }
+
   const missingConfig = getMissingScannerConfig(source.channel);
 
   if (missingConfig) {
@@ -50,8 +66,18 @@ export async function POST(
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof ScanAlreadyRunningError) {
+      return NextResponse.json(
+        { error: error.message, code: "scan_already_running" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { error: (error as Error).message },
+      {
+        error: (error as Error).message,
+        details: (error as { details?: string[] }).details || undefined,
+      },
       { status: 500 }
     );
   }

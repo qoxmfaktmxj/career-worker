@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_FILTER_CONFIG } from "@/lib/filters";
+import { ScanAlreadyRunningError } from "@/lib/scan-lock";
 import {
   formatMissingScannerConfigMessage,
   getMissingScannerConfig,
 } from "@/scanners/requirements";
 
 export async function POST() {
-  const [{ getDb }, { runScan }] = await Promise.all([
+  const [{ getDb }, { runScan }, { parseStoredScanSourceConfig }] =
+    await Promise.all([
     import("@/lib/db"),
     import("@/scanners/orchestrator"),
+    import("@/lib/scan-source-config"),
   ]);
   const db = getDb();
   const sources = db
@@ -19,7 +22,7 @@ export async function POST() {
 
   for (const source of sources) {
     try {
-      const config = JSON.parse(source.config) as Record<string, unknown>;
+      const config = parseStoredScanSourceConfig(source.config);
       const missingConfig = getMissingScannerConfig(source.channel);
 
       if (missingConfig) {
@@ -49,11 +52,15 @@ export async function POST() {
         ...result,
       });
     } catch (error) {
-      const scanError = error as Error;
+      const scanError = error as Error & { details?: string[] };
       results.push({
         source_id: source.id,
         channel: source.channel,
         error: scanError.message,
+        ...(scanError instanceof ScanAlreadyRunningError
+          ? { code: "scan_already_running" }
+          : {}),
+        ...(scanError.details ? { details: scanError.details } : {}),
       });
     }
   }

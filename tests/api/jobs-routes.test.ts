@@ -207,6 +207,11 @@ describe("Jobs API routes", () => {
     });
     expect(readListingJob(created.job_id)).toContain("Manual Corp");
     expect(readDetailJob(created.job_id)).toContain("We build internal platform tooling.");
+    expect(
+      db.prepare(
+        "SELECT COUNT(*) as count FROM job_fingerprints WHERE job_id = ?"
+      ).get(created.job_id) as { count: number }
+    ).toEqual({ count: 1 });
   });
 
   it("rejects manual job creation without required fields", async () => {
@@ -258,6 +263,50 @@ describe("Jobs API routes", () => {
     expect(await response.json()).toEqual({
       error: "Job already exists",
       job_id: "JOB-EXISTS-1",
+    });
+  });
+
+  it("rejects manual job creation when the fingerprint already exists", async () => {
+    const { getDb } = await import("@/lib/db");
+    const { makeJobFingerprint } = await import("@/lib/job-dedupe");
+    const db = getDb();
+    const fingerprint = makeJobFingerprint({
+      rawUrl: null,
+      company: "Manual Corp",
+      position: "Platform Engineer",
+    });
+
+    db.prepare(`
+      INSERT INTO jobs (
+        job_id, source, company, position, status, fit_status, workflow_status, application_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-EXISTS-2",
+      "manual",
+      "Manual Corp",
+      "Platform Engineer",
+      "passed",
+      "passed",
+      "detail_ready",
+      "not_started"
+    );
+    db.prepare(
+      "INSERT INTO job_fingerprints (fingerprint, job_id, source) VALUES (?, ?, ?)"
+    ).run(fingerprint, "JOB-EXISTS-2", "manual");
+
+    const jobsRoute = await import("@/app/api/jobs/route");
+    const response = await jobsRoute.POST(
+      makeRequest("http://localhost/api/jobs", "POST", {
+        company: "Manual Corp",
+        position: "Platform Engineer",
+        rawText: "duplicate by fingerprint",
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Job already exists",
+      job_id: "JOB-EXISTS-2",
     });
   });
 

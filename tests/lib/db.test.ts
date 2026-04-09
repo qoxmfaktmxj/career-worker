@@ -47,6 +47,7 @@ describe("Database", () => {
     expect(tableNames).toContain("jobs");
     expect(tableNames).toContain("job_fingerprints");
     expect(tableNames).toContain("scan_runs");
+    expect(tableNames).toContain("scan_source_locks");
     expect(tableNames).toContain("outputs");
     expect(tableNames).toContain("sessions");
 

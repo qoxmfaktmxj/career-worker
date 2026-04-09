@@ -6,19 +6,40 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await request.json();
+  const { validateScanSourceConfig } = await import("@/lib/scan-source-config");
   const { getDb } = await import("@/lib/db");
   const db = getDb();
   const sets: string[] = [];
   const values: unknown[] = [];
 
   if (body.name !== undefined) {
+    const normalizedName = String(body.name).trim();
+
+    if (!normalizedName) {
+      return NextResponse.json({ error: "name is required" }, { status: 400 });
+    }
+
     sets.push("name = ?");
-    values.push(body.name);
+    values.push(normalizedName);
   }
 
   if (body.config !== undefined) {
+    let normalizedConfig;
+
+    try {
+      normalizedConfig = validateScanSourceConfig(body.config);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: "invalid source config",
+          details: (error as { details?: string[] }).details || [],
+        },
+        { status: 400 }
+      );
+    }
+
     sets.push("config = ?");
-    values.push(JSON.stringify(body.config));
+    values.push(JSON.stringify(normalizedConfig));
   }
 
   if (body.enabled !== undefined) {
@@ -27,7 +48,7 @@ export async function PUT(
   }
 
   if (sets.length === 0) {
-    return NextResponse.json({ error: "변경할 내용 없음" }, { status: 400 });
+    return NextResponse.json({ error: "변경할 내용이 없습니다" }, { status: 400 });
   }
 
   values.push(id);
