@@ -6,8 +6,13 @@ export interface JobTableJob {
   position: string;
   source: string;
   deadline: string | null;
+  deadline_text?: string | null;
+  deadline_date?: string | null;
   fit_score: number | null;
   status: string;
+  fit_status?: string | null;
+  workflow_status?: string | null;
+  application_status?: string | null;
   company_size?: string | null;
 }
 
@@ -22,34 +27,49 @@ const SOURCE_LABELS: Record<string, string> = {
   saramin: "사람인",
   jobkorea: "잡코리아",
   remember: "리멤버",
-  manual: "직접 저장",
+  manual: "직접 입력",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  passed: "미평가",
-  matched: "적합",
-  low_fit: "보류",
-  draft_ready: "초안 완료",
-  applied: "지원 완료",
+  unreviewed: "미검토",
   filtered_out: "제외",
+  passed: "신규",
+  matched: "추천",
+  low_fit: "보류",
+  evaluation_failed: "평가 실패",
+  idle: "대기",
+  detail_pending: "상세 대기",
+  detail_ready: "상세 확보",
+  generating: "생성 중",
+  draft_ready: "초안 완료",
+  generation_failed: "생성 실패",
+  not_started: "미지원",
+  applied: "지원 완료",
+  hold: "보류",
+  withdrawn: "철회",
+  closed: "마감",
 };
 
-function dDay(deadline: string | null): string {
-  if (!deadline) {
-    return "상시";
+function formatDeadline(deadlineDate: string | null, deadlineText: string | null) {
+  if (deadlineDate && /^\d{4}-\d{2}-\d{2}$/u.test(deadlineDate)) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const target = new Date(`${deadlineDate}T00:00:00`);
+    const diff = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+
+    if (diff < 0) {
+      return "마감";
+    }
+
+    if (diff === 0) {
+      return "오늘";
+    }
+
+    return `D-${diff}`;
   }
 
-  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
-
-  if (diff < 0) {
-    return "마감";
-  }
-
-  if (diff === 0) {
-    return "오늘";
-  }
-
-  return `D-${diff}`;
+  return deadlineText || "상시";
 }
 
 export function JobTable({
@@ -115,7 +135,10 @@ export function JobTable({
                 {SOURCE_LABELS[job.source] ?? job.source}
               </td>
               <td className="px-5 py-4 text-[var(--muted-foreground)]">
-                {dDay(job.deadline)}
+                {formatDeadline(
+                  job.deadline_date ?? job.deadline,
+                  job.deadline_text ?? job.deadline
+                )}
               </td>
               {showScore ? (
                 <td className="font-data px-5 py-4 text-[var(--foreground)]">

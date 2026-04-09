@@ -46,7 +46,7 @@ export async function POST(
   }
 
   try {
-    const [{ saveOutput }, { readProfileFile }, { getJobContent }] =
+    const [{ createOutputRecord }, { readProfileFile }, { getJobContent }] =
       await Promise.all([
         import("@/lib/output-store"),
         import("@/lib/profile-store"),
@@ -106,17 +106,24 @@ export async function POST(
       }
     }
 
-    const filePath = saveOutput(jobId, "answer_pack", markdown, "ko");
-
-    db.prepare("INSERT INTO outputs (job_id, type, file_path) VALUES (?, ?, ?)")
-      .run(jobId, "answer_pack", filePath);
-    db.prepare(
-      "UPDATE jobs SET status = 'draft_ready', updated_at = datetime('now') WHERE job_id = ?"
-    ).run(jobId);
+    const output = createOutputRecord({
+      jobId,
+      type: "answer_pack",
+      content: markdown,
+      language: "ko",
+      onPersist(database) {
+        database
+          .prepare(
+            "UPDATE jobs SET status = 'draft_ready', workflow_status = 'draft_ready', updated_at = datetime('now') WHERE job_id = ?"
+          )
+          .run(jobId);
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      file_path: filePath,
+      file_path: output.file_path,
+      version: output.version,
       data: response.data,
     });
   } catch (error) {

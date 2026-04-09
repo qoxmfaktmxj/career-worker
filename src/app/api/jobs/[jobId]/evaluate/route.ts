@@ -62,6 +62,7 @@ export async function POST(
     db.prepare(`
       UPDATE jobs SET
         status = CASE WHEN ? >= 3.5 THEN 'matched' ELSE 'low_fit' END,
+        fit_status = CASE WHEN ? >= 3.5 THEN 'matched' ELSE 'low_fit' END,
         fit_score = ?,
         fit_reason = ?,
         risks = ?,
@@ -70,6 +71,7 @@ export async function POST(
         updated_at = datetime('now')
       WHERE job_id = ?
     `).run(
+      fitScore,
       fitScore,
       fitScore,
       typeof data.fit_reason === "string" ? data.fit_reason : null,

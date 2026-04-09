@@ -31,9 +31,12 @@ export function getJobContent(job: Record<string, unknown>) {
   const detailFile = asString(job.detail_file);
   const listingContent = safeRead(listingFile);
   const detailContent = safeRead(detailFile);
-  const detailStatus =
-    asString(job.detail_status) ??
-    (detailFile && detailContent ? "ready" : "missing");
+  const storedDetailStatus = asString(job.detail_status);
+  const detailStatus = detailContent
+    ? "ready"
+    : storedDetailStatus === "failed"
+      ? "failed"
+      : "missing";
 
   return {
     listingFile,

@@ -6,20 +6,21 @@ import { useRouter } from "next/navigation";
 import { JobTable, type JobTableJob } from "@/components/job-table";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "진행 상태" },
-  { value: "passed", label: "미평가" },
-  { value: "matched", label: "적합" },
+  { value: "", label: "상태 전체" },
+  { value: "passed", label: "신규" },
+  { value: "matched", label: "추천" },
   { value: "low_fit", label: "보류" },
   { value: "draft_ready", label: "초안 완료" },
   { value: "applied", label: "지원 완료" },
+  { value: "filtered_out", label: "제외" },
 ];
 
 const SOURCE_OPTIONS = [
-  { value: "", label: "진행 채널" },
+  { value: "", label: "채널 전체" },
   { value: "saramin", label: "사람인" },
   { value: "jobkorea", label: "잡코리아" },
   { value: "remember", label: "리멤버" },
-  { value: "manual", label: "직접 저장" },
+  { value: "manual", label: "직접 입력" },
 ];
 
 const EMPTY_CREATE_FORM = {
@@ -124,9 +125,9 @@ export default function JobsPage() {
   };
 
   const selectedStatus =
-    STATUS_OPTIONS.find((option) => option.value === status)?.label || "진행 상태";
+    STATUS_OPTIONS.find((option) => option.value === status)?.label || "상태 전체";
   const selectedSource =
-    SOURCE_OPTIONS.find((option) => option.value === source)?.label || "진행 채널";
+    SOURCE_OPTIONS.find((option) => option.value === source)?.label || "채널 전체";
 
   return (
     <div className="min-h-screen bg-white">
@@ -140,7 +141,7 @@ export default function JobsPage() {
           }}
           className="bg-accent rounded-[4px] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
         >
-          직접 저장
+          직접 등록
         </button>
       </section>
 
@@ -204,10 +205,10 @@ export default function JobsPage() {
                     <path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5" />
                   </svg>
                   <p className="mt-5 text-[15px] font-medium text-[var(--foreground)]">
-                    조건에 해당하는 공고가 없습니다.
+                    조건에 맞는 공고가 없습니다.
                   </p>
                   <p className="font-caption mt-3 text-[13px] text-[var(--muted-foreground)]">
-                    필터 조건을 변경하거나 직접 저장으로 공고를 추가해 보세요.
+                    필터 조건을 바꾸거나 직접 등록으로 공고를 추가해 보세요.
                   </p>
                 </div>
               </div>
@@ -218,7 +219,9 @@ export default function JobsPage() {
         </div>
 
         <aside className="px-5 py-6">
-          <h2 className="text-sm font-medium text-[var(--foreground)]">적용된 필터</h2>
+          <h2 className="text-sm font-medium text-[var(--foreground)]">
+            적용된 필터
+          </h2>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="rounded-[4px] bg-[#d9edf9] px-3 py-2 text-sm text-[#4a7ea7]">
               상태: {selectedStatus}
@@ -253,10 +256,10 @@ export default function JobsPage() {
           <section className="w-full max-w-[760px] rounded-[4px] border border-[var(--border)] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.14)]">
             <div className="border-b border-[var(--border)] px-8 py-5">
               <h2 className="font-heading text-[20px] font-semibold text-[var(--foreground)]">
-                공고 직접 저장
+                공고 직접 등록
               </h2>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                스캔 없이 공고를 바로 등록합니다. 회사명, 포지션, JD 본문은 필수입니다.
+                수집 없이 공고를 바로 등록합니다. 회사명, 포지션, JD 본문은 필수입니다.
               </p>
             </div>
             <form onSubmit={handleCreate} className="grid gap-4 px-8 py-6">
@@ -350,7 +353,7 @@ export default function JobsPage() {
                   disabled={creating}
                   className="bg-accent rounded-[4px] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {creating ? "저장 중..." : "저장 후 상세 보기"}
+                  {creating ? "등록 중..." : "등록 후 상세 보기"}
                 </button>
               </div>
             </form>

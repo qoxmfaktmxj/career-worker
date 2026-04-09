@@ -15,8 +15,26 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { readOutput } = await import("@/lib/output-store");
-  const content = readOutput(output.file_path);
+  const { OutputFileMissingError, readOutput } = await import(
+    "@/lib/output-store"
+  );
+  let content: string;
+
+  try {
+    content = readOutput(output.file_path);
+  } catch (error) {
+    if (error instanceof OutputFileMissingError) {
+      return NextResponse.json(
+        {
+          error: "output_file_missing",
+          message: "산출물 파일이 없어 메타데이터와 실제 파일이 일치하지 않습니다.",
+        },
+        { status: 409 }
+      );
+    }
+
+    throw error;
+  }
 
   return NextResponse.json({ ...output, content });
 }
@@ -26,19 +44,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { deleteOutput } = await import("@/lib/output-store");
-  const { getDb } = await import("@/lib/db");
-  const db = getDb();
-  const output = db
-    .prepare("SELECT file_path FROM outputs WHERE id = ?")
-    .get(id) as { file_path: string } | undefined;
+  const { deleteOutputRecord } = await import("@/lib/output-store");
+  const output = deleteOutputRecord(id);
 
   if (!output) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-
-  deleteOutput(output.file_path);
-  db.prepare("DELETE FROM outputs WHERE id = ?").run(id);
 
   return NextResponse.json({ success: true });
 }

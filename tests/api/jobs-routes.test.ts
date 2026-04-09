@@ -72,19 +72,49 @@ describe("Jobs API routes", () => {
 
     db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, status, fit_score
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run("JOB-001", "saramin", "Alpha", "Java Backend Engineer", "passed", 4.7);
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, fit_score
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-001",
+      "saramin",
+      "Alpha",
+      "Java Backend Engineer",
+      "passed",
+      "passed",
+      "detail_pending",
+      "not_started",
+      4.7
+    );
     db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, status, fit_score
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run("JOB-002", "jobkorea", "Beta", "Frontend Engineer", "matched", 4.2);
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, fit_score
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-002",
+      "jobkorea",
+      "Beta",
+      "Frontend Engineer",
+      "matched",
+      "matched",
+      "detail_ready",
+      "not_started",
+      4.2
+    );
     db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, status, fit_score
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run("JOB-003", "saramin", "Gamma", "Intern Backend", "filtered_out", 2.1);
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, fit_score
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-003",
+      "saramin",
+      "Gamma",
+      "Intern Backend",
+      "filtered_out",
+      "filtered_out",
+      "detail_pending",
+      "not_started",
+      2.1
+    );
 
     const jobsRoute = await import("@/app/api/jobs/route");
 
@@ -141,6 +171,7 @@ describe("Jobs API routes", () => {
       .prepare(
         `
           SELECT job_id, source, company, position, location, deadline, raw_url, status, detail_status
+               , fit_status, workflow_status, application_status
           FROM jobs
           WHERE job_id = ?
         `
@@ -155,6 +186,9 @@ describe("Jobs API routes", () => {
       raw_url: string;
       status: string;
       detail_status: string;
+      fit_status: string;
+      workflow_status: string;
+      application_status: string;
     };
 
     expect(saved).toMatchObject({
@@ -167,6 +201,9 @@ describe("Jobs API routes", () => {
       raw_url: "https://example.com/manual-job",
       status: "passed",
       detail_status: "ready",
+      fit_status: "passed",
+      workflow_status: "detail_ready",
+      application_status: "not_started",
     });
     expect(readListingJob(created.job_id)).toContain("Manual Corp");
     expect(readDetailJob(created.job_id)).toContain("We build internal platform tooling.");
@@ -193,15 +230,18 @@ describe("Jobs API routes", () => {
     const db = getDb();
     db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, raw_url, status
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        job_id, source, company, position, raw_url, status, fit_status, workflow_status, application_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       "JOB-EXISTS-1",
       "saramin",
       "Existing Corp",
       "Existing Role",
       "https://example.com/duplicate-job",
-      "passed"
+      "passed",
+      "passed",
+      "detail_pending",
+      "not_started"
     );
 
     const jobsRoute = await import("@/app/api/jobs/route");
@@ -227,15 +267,80 @@ describe("Jobs API routes", () => {
 
     const insert = db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, status, deadline
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, deadline, deadline_text, deadline_date, deadline_parse_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    insert.run("JOB-010", "saramin", "Alpha", "Backend", "passed", dateOffset(2));
-    insert.run("JOB-011", "jobkorea", "Beta", "Platform", "matched", dateOffset(1));
-    insert.run("JOB-012", "remember", "Gamma", "Ops", "passed", dateOffset(-1));
-    insert.run("JOB-013", "saramin", "Delta", "Intern", "filtered_out", dateOffset(5));
-    insert.run("JOB-014", "saramin", "Epsilon", "Applied", "applied", dateOffset(-2));
+    insert.run(
+      "JOB-010",
+      "saramin",
+      "Alpha",
+      "Backend",
+      "passed",
+      "passed",
+      "detail_pending",
+      "not_started",
+      dateOffset(2),
+      dateOffset(2),
+      dateOffset(2),
+      "parsed"
+    );
+    insert.run(
+      "JOB-011",
+      "jobkorea",
+      "Beta",
+      "Platform",
+      "matched",
+      "matched",
+      "detail_ready",
+      "not_started",
+      dateOffset(1),
+      dateOffset(1),
+      dateOffset(1),
+      "parsed"
+    );
+    insert.run(
+      "JOB-012",
+      "remember",
+      "Gamma",
+      "Ops",
+      "passed",
+      "passed",
+      "detail_ready",
+      "not_started",
+      dateOffset(-1),
+      dateOffset(-1),
+      dateOffset(-1),
+      "parsed"
+    );
+    insert.run(
+      "JOB-013",
+      "saramin",
+      "Delta",
+      "Intern",
+      "filtered_out",
+      "filtered_out",
+      "detail_pending",
+      "not_started",
+      dateOffset(5),
+      dateOffset(5),
+      dateOffset(5),
+      "parsed"
+    );
+    insert.run(
+      "JOB-014",
+      "saramin",
+      "Epsilon",
+      "Applied",
+      "applied",
+      "matched",
+      "draft_ready",
+      "applied",
+      dateOffset(-2),
+      dateOffset(-2),
+      dateOffset(-2),
+      "parsed"
+    );
 
     const statsRoute = await import("@/app/api/jobs/stats/route");
     const response = await statsRoute.GET();
@@ -245,7 +350,7 @@ describe("Jobs API routes", () => {
     expect(stats).toEqual({
       total: 4,
       new_jobs: 2,
-      matched: 1,
+      matched: 2,
       deadline_soon: 2,
       expired: 1,
     });
@@ -260,9 +365,19 @@ describe("Jobs API routes", () => {
 
     db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, status, memo
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run("JOB-020", "saramin", "Alpha", "Backend", "passed", "initial memo");
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, memo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-020",
+      "saramin",
+      "Alpha",
+      "Backend",
+      "passed",
+      "passed",
+      "detail_pending",
+      "not_started",
+      "initial memo"
+    );
 
     saveListingJob("JOB-020", "# Listing\n- summary");
     saveDetailJob("JOB-020", "# Detail JD\n- full detail");
@@ -310,9 +425,19 @@ describe("Jobs API routes", () => {
 
     db.prepare(`
       INSERT INTO jobs (
-        job_id, source, company, position, status, memo
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run("JOB-030", "jobkorea", "Beta", "Frontend", "passed", "old memo");
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, memo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-030",
+      "jobkorea",
+      "Beta",
+      "Frontend",
+      "passed",
+      "passed",
+      "detail_pending",
+      "not_started",
+      "old memo"
+    );
 
     const jobRoute = await import("@/app/api/jobs/[jobId]/route");
     const response = await jobRoute.PUT(
@@ -327,10 +452,22 @@ describe("Jobs API routes", () => {
     expect(await response.json()).toEqual({ success: true });
 
     const updated = db
-      .prepare("SELECT status, memo, updated_at FROM jobs WHERE job_id = ?")
-      .get("JOB-030") as { status: string; memo: string; updated_at: string };
+      .prepare(
+        "SELECT status, fit_status, workflow_status, application_status, memo, updated_at FROM jobs WHERE job_id = ?"
+      )
+      .get("JOB-030") as {
+      status: string;
+      fit_status: string;
+      workflow_status: string;
+      application_status: string;
+      memo: string;
+      updated_at: string;
+    };
 
     expect(updated.status).toBe("matched");
+    expect(updated.fit_status).toBe("matched");
+    expect(updated.workflow_status).toBe("detail_pending");
+    expect(updated.application_status).toBe("not_started");
     expect(updated.memo).toBe("updated memo");
     expect(updated.updated_at).toBeTruthy();
   });

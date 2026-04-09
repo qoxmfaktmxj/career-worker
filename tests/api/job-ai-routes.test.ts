@@ -36,11 +36,14 @@ function makeRequest(
 async function seedJob(jobId: string, extra: Record<string, unknown> = {}) {
   const { getDb } = await import("@/lib/db");
   const db = getDb();
-  const baseJob = {
+  const baseJob: Record<string, unknown> = {
     source: "saramin",
     company: "Alpha",
     position: "Backend Engineer",
     status: "matched",
+    fit_status: "matched",
+    workflow_status: "detail_pending",
+    application_status: "not_started",
     detail_status: "missing",
     detail_file: null,
     recommended_stories: JSON.stringify(["S001"]),
@@ -51,6 +54,13 @@ async function seedJob(jobId: string, extra: Record<string, unknown> = {}) {
     ...extra,
   };
 
+  if (
+    baseJob.workflow_status === "detail_pending" &&
+    baseJob.detail_status === "ready"
+  ) {
+    baseJob.workflow_status = "detail_ready";
+  }
+
   db.prepare(`
     INSERT INTO jobs (
       job_id,
@@ -58,6 +68,9 @@ async function seedJob(jobId: string, extra: Record<string, unknown> = {}) {
       company,
       position,
       status,
+      fit_status,
+      workflow_status,
+      application_status,
       detail_status,
       detail_file,
       recommended_stories,
@@ -65,13 +78,16 @@ async function seedJob(jobId: string, extra: Record<string, unknown> = {}) {
       fit_score,
       fit_reason,
       risks
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     jobId,
     baseJob.source,
     baseJob.company,
     baseJob.position,
     baseJob.status,
+    baseJob.fit_status,
+    baseJob.workflow_status,
+    baseJob.application_status,
     baseJob.detail_status,
     baseJob.detail_file,
     baseJob.recommended_stories,
@@ -178,12 +194,13 @@ describe("Job AI action routes", () => {
     const { getDb } = await import("@/lib/db");
     const updated = getDb()
       .prepare(
-        "SELECT status, fit_score, fit_reason, risks, recommended_stories, questions_detected FROM jobs WHERE job_id = ?"
+        "SELECT status, fit_status, fit_score, fit_reason, risks, recommended_stories, questions_detected FROM jobs WHERE job_id = ?"
       )
       .get("JOB-EVAL-1") as Record<string, unknown>;
 
     expect(updated).toEqual({
       status: "matched",
+      fit_status: "matched",
       fit_score: 4.6,
       fit_reason: "Role and experience align strongly.",
       risks: JSON.stringify(["Domain ramp-up needed"]),
@@ -307,11 +324,12 @@ describe("Job AI action routes", () => {
       .prepare("SELECT type, file_path FROM outputs WHERE job_id = ?")
       .get("JOB-ANS-1") as { type: string; file_path: string };
     const job = getDb()
-      .prepare("SELECT status FROM jobs WHERE job_id = ?")
-      .get("JOB-ANS-1") as { status: string };
+      .prepare("SELECT status, workflow_status FROM jobs WHERE job_id = ?")
+      .get("JOB-ANS-1") as { status: string; workflow_status: string };
 
     expect(output).toEqual({ type: "answer_pack", file_path: body.file_path });
     expect(job.status).toBe("draft_ready");
+    expect(job.workflow_status).toBe("draft_ready");
   });
 
   it("rejects answer generation when detected questions are missing", async () => {
@@ -386,11 +404,59 @@ describe("Job AI action routes", () => {
       .prepare("SELECT type FROM outputs WHERE job_id = ?")
       .get("JOB-RESUME-1") as { type: string };
     const job = getDb()
-      .prepare("SELECT status FROM jobs WHERE job_id = ?")
-      .get("JOB-RESUME-1") as { status: string };
+      .prepare("SELECT status, workflow_status FROM jobs WHERE job_id = ?")
+      .get("JOB-RESUME-1") as { status: string; workflow_status: string };
 
     expect(output.type).toBe("resume");
     expect(job.status).toBe("draft_ready");
+    expect(job.workflow_status).toBe("draft_ready");
+  });
+
+  it("increments resume output version on repeated generation", async () => {
+    const { saveDetailJob } = await import("@/lib/file-store");
+
+    await seedJob("JOB-RESUME-2", {
+      detail_status: "ready",
+      detail_file: "details/JOB-RESUME-2.md",
+    });
+    await seedProfileFiles();
+    saveDetailJob("JOB-RESUME-2", "# JD\n- repeated resume target");
+
+    callOpenClawMock.mockResolvedValue({
+      success: true,
+      data: {
+        resume_md: "# Tailored Resume\n- impact",
+      },
+    });
+
+    const resumeRoute = await import(
+      "@/app/api/jobs/[jobId]/generate-resume/route"
+    );
+
+    await resumeRoute.POST(
+      makeRequest("http://localhost/api/jobs/JOB-RESUME-2/generate-resume", "POST"),
+      { params: Promise.resolve({ jobId: "JOB-RESUME-2" }) }
+    );
+    await resumeRoute.POST(
+      makeRequest("http://localhost/api/jobs/JOB-RESUME-2/generate-resume", "POST"),
+      { params: Promise.resolve({ jobId: "JOB-RESUME-2" }) }
+    );
+
+    const { getDb } = await import("@/lib/db");
+    const outputs = getDb()
+      .prepare(
+        "SELECT version, file_path FROM outputs WHERE job_id = ? AND type = ? ORDER BY version ASC"
+      )
+      .all("JOB-RESUME-2", "resume") as Array<{
+      version: number;
+      file_path: string;
+    }>;
+
+    expect(outputs).toHaveLength(2);
+    expect(outputs.map((output) => output.version)).toEqual([1, 2]);
+    expect(outputs[0]?.file_path).not.toBe(outputs[1]?.file_path);
+    expect(outputs[0]?.file_path).toContain("_resume_v1_");
+    expect(outputs[1]?.file_path).toContain("_resume_v2_");
   });
 
   it("generates a recruiter reply from request body context", async () => {

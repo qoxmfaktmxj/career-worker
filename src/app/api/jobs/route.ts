@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { generateJobId } from "@/lib/job-id";
+import {
+  APPLICATION_STATUSES,
+  applyResolvedStatuses,
+  FIT_STATUSES,
+  mapLegacyStatusFilter,
+  WORKFLOW_STATUSES,
+} from "@/lib/job-status";
 
 function buildManualListingContent(body: {
   company: string;
@@ -74,6 +81,9 @@ export async function GET(request: NextRequest) {
   const { getDb } = await import("@/lib/db");
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const fitStatus = searchParams.get("fit_status");
+  const workflowStatus = searchParams.get("workflow_status");
+  const applicationStatus = searchParams.get("application_status");
   const source = searchParams.get("source");
   const minScore = searchParams.get("min_score");
   const search = searchParams.get("search");
@@ -83,8 +93,49 @@ export async function GET(request: NextRequest) {
   const params: unknown[] = [];
 
   if (status) {
-    query += " AND status = ?";
-    params.push(status);
+    const mappedStatus = mapLegacyStatusFilter(status);
+
+    if (!mappedStatus) {
+      return NextResponse.json({ error: "invalid status" }, { status: 400 });
+    }
+
+    query += ` AND ${mappedStatus.column} = ?`;
+    params.push(mappedStatus.value);
+  }
+
+  if (fitStatus) {
+    if (!(FIT_STATUSES as readonly string[]).includes(fitStatus)) {
+      return NextResponse.json({ error: "invalid fit_status" }, { status: 400 });
+    }
+
+    query += " AND fit_status = ?";
+    params.push(fitStatus);
+  }
+
+  if (workflowStatus) {
+    if (!(WORKFLOW_STATUSES as readonly string[]).includes(workflowStatus)) {
+      return NextResponse.json(
+        { error: "invalid workflow_status" },
+        { status: 400 }
+      );
+    }
+
+    query += " AND workflow_status = ?";
+    params.push(workflowStatus);
+  }
+
+  if (applicationStatus) {
+    if (
+      !(APPLICATION_STATUSES as readonly string[]).includes(applicationStatus)
+    ) {
+      return NextResponse.json(
+        { error: "invalid application_status" },
+        { status: 400 }
+      );
+    }
+
+    query += " AND application_status = ?";
+    params.push(applicationStatus);
   }
 
   if (source) {
@@ -93,8 +144,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (minScore) {
+    const parsedMinScore = Number.parseFloat(minScore);
+
+    if (!Number.isFinite(parsedMinScore)) {
+      return NextResponse.json({ error: "invalid min_score" }, { status: 400 });
+    }
+
     query += " AND fit_score >= ?";
-    params.push(Number.parseFloat(minScore));
+    params.push(parsedMinScore);
   }
 
   if (search) {
@@ -102,13 +159,16 @@ export async function GET(request: NextRequest) {
     params.push(`%${search}%`, `%${search}%`);
   }
 
-  if (!status) {
-    query += " AND status != 'filtered_out'";
+  if (!status && !fitStatus) {
+    query += " AND fit_status != 'filtered_out'";
   }
 
   query += " ORDER BY created_at DESC LIMIT 200";
 
-  const jobs = db.prepare(query).all(...params);
+  const jobs = db
+    .prepare(query)
+    .all(...params)
+    .map((job) => applyResolvedStatuses(job as Record<string, unknown>));
 
   return NextResponse.json(jobs);
 }
@@ -200,6 +260,9 @@ export async function POST(request: NextRequest) {
       deadline_parse_status,
       salary_text,
       status,
+      fit_status,
+      workflow_status,
+      application_status,
       memo,
       listing_file,
       detail_file,
@@ -207,7 +270,7 @@ export async function POST(request: NextRequest) {
       detail_status,
       raw_file
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     jobId,
     "manual",
@@ -224,6 +287,9 @@ export async function POST(request: NextRequest) {
     deadline.parseStatus,
     body.salaryText?.trim() || null,
     "passed",
+    "passed",
+    "detail_ready",
+    "not_started",
     body.memo?.trim() || null,
     listingFilePath,
     detailFilePath,

@@ -211,4 +211,30 @@ describe("Profile and outputs API routes", () => {
     expect(count.count).toBe(0);
     expect(fs.existsSync(path.join(TEST_OUTPUTS_DIR, filePath))).toBe(false);
   });
+
+  it("returns 409 when output metadata exists but the file is missing", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+
+    db.prepare(`
+      INSERT INTO jobs (job_id, source, company, position)
+      VALUES (?, ?, ?, ?)
+    `).run("JOB-400", "saramin", "Delta", "Platform");
+    db.prepare(`
+      INSERT INTO outputs (id, job_id, type, file_path, language, version)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(11, "JOB-400", "resume", "resumes/missing-file.md", "ko", 2);
+
+    const outputRoute = await import("@/app/api/outputs/[id]/route");
+    const response = await outputRoute.GET(
+      makeRequest("http://localhost/api/outputs/11", "GET"),
+      { params: Promise.resolve({ id: "11" }) }
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "output_file_missing",
+      message: "산출물 파일이 없어 메타데이터와 실제 파일이 일치하지 않습니다.",
+    });
+  });
 });

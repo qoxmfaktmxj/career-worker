@@ -252,6 +252,9 @@ export async function runScan(
         deadline_parse_status,
         salary_text,
         status,
+        fit_status,
+        workflow_status,
+        application_status,
         filter_reason,
         listing_file,
         detail_file,
@@ -259,7 +262,7 @@ export async function runScan(
         detail_status,
         raw_file
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertFingerprint = db.prepare(
       "INSERT INTO job_fingerprints (fingerprint, job_id, source) VALUES (?, ?, ?)"
@@ -272,6 +275,8 @@ export async function runScan(
 
         let detailFilePath: string | null = null;
         let detailCollectedAt: string | null = null;
+        const workflowStatus =
+          item.detailStatus === "ready" ? "detail_ready" : "detail_pending";
 
         if (item.detailContent) {
           detailFilePath = saveDetailJob(jobId, item.detailContent);
@@ -298,6 +303,9 @@ export async function runScan(
           deadline.parseStatus,
           item.result.salary_text || null,
           item.status,
+          item.status,
+          workflowStatus,
+          "not_started",
           item.filterReason,
           listingFilePath,
           detailFilePath,

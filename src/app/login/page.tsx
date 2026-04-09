@@ -79,7 +79,7 @@ export default function LoginPage() {
               disabled={loading}
               className="bg-accent mt-4 h-11 w-full rounded-[4px] border border-transparent text-sm font-medium text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "작업실 여는 중" : "작업실 열기"}
+              {loading ? "작업실 여는 중..." : "작업실 열기"}
             </button>
 
             {error ? (

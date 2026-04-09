@@ -81,7 +81,7 @@ export default function DashboardPage() {
         window.alert(
           [
             "일부 수집원을 실행할 수 없습니다.",
-            "누락된 설정을 확인해 주세요.",
+            "아래 설정을 확인해 주세요.",
             "",
             ...lines,
           ].join("\n")
@@ -106,7 +106,7 @@ export default function DashboardPage() {
           disabled={scanning}
           className="bg-accent rounded-[4px] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {scanning ? "스캔 중" : "전체 스캔"}
+          {scanning ? "수집 중..." : "전체 수집"}
         </button>
       </section>
 
@@ -127,7 +127,7 @@ export default function DashboardPage() {
             </div>
             <JobTable
               jobs={matchedJobs}
-              emptyTitle="검토할 공고가 없습니다"
+              emptyTitle="검토할 공고가 없습니다."
               emptyDescription=""
             />
           </section>
@@ -141,19 +141,19 @@ export default function DashboardPage() {
           <div className="space-y-4 text-sm text-[var(--muted-foreground)]">
             <div className="flex gap-3">
               <span className="text-accent font-data">1</span>
-              <p>수집된 공고를 확인하세요</p>
+              <p>수집된 공고를 먼저 확인하세요.</p>
             </div>
             <div className="flex gap-3">
               <span className="text-accent font-data">2</span>
-              <p>우선 검토 대상을 분류하세요</p>
+              <p>우선 검토 대상을 빠르게 분류하세요.</p>
             </div>
             <div className="flex gap-3">
               <span className="text-accent font-data">3</span>
-              <p>기한 임박 공고를 처리하세요</p>
+              <p>기한 임박 공고를 먼저 처리하세요.</p>
             </div>
             <div className="flex gap-3">
               <span className="text-accent font-data">4</span>
-              <p>완료된 작업을 기록하세요</p>
+              <p>완료한 작업은 메모로 남기세요.</p>
             </div>
           </div>
         </aside>

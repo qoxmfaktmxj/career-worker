@@ -89,6 +89,9 @@ function initSchema(database: Database.Database): void {
       deadline_parse_status TEXT DEFAULT 'missing',
       salary_text         TEXT,
       status              TEXT DEFAULT 'collected',
+      fit_status          TEXT DEFAULT 'unreviewed',
+      workflow_status     TEXT DEFAULT 'idle',
+      application_status  TEXT DEFAULT 'not_started',
       fit_score           REAL,
       fit_reason          TEXT,
       risks               TEXT,
@@ -153,7 +156,11 @@ function initSchema(database: Database.Database): void {
 
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_fit_status ON jobs(fit_status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_workflow_status ON jobs(workflow_status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_application_status ON jobs(application_status);
     CREATE INDEX IF NOT EXISTS idx_jobs_deadline ON jobs(deadline);
+    CREATE INDEX IF NOT EXISTS idx_jobs_deadline_date ON jobs(deadline_date);
     CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
     CREATE INDEX IF NOT EXISTS idx_jobs_fit_score ON jobs(fit_score);
     CREATE INDEX IF NOT EXISTS idx_fingerprints_fp ON job_fingerprints(fingerprint);
@@ -213,6 +220,21 @@ function migrateSchema(database: Database.Database): void {
       type: "TEXT",
       definition: "TEXT DEFAULT 'collected'",
     },
+    {
+      name: "fit_status",
+      type: "TEXT",
+      definition: "TEXT DEFAULT 'unreviewed'",
+    },
+    {
+      name: "workflow_status",
+      type: "TEXT",
+      definition: "TEXT DEFAULT 'idle'",
+    },
+    {
+      name: "application_status",
+      type: "TEXT",
+      definition: "TEXT DEFAULT 'not_started'",
+    },
     { name: "fit_score", type: "REAL", definition: "REAL" },
     { name: "fit_reason", type: "TEXT", definition: "TEXT" },
     { name: "risks", type: "TEXT", definition: "TEXT" },
@@ -241,6 +263,76 @@ function migrateSchema(database: Database.Database): void {
     { name: "created_at", type: "TEXT", definition: "TEXT" },
     { name: "updated_at", type: "TEXT", definition: "TEXT" },
   ]);
+
+  database.exec(`
+    UPDATE jobs
+    SET deadline_text = deadline
+    WHERE deadline_text IS NULL
+      AND deadline IS NOT NULL
+  `);
+
+  database.exec(`
+    UPDATE jobs
+    SET deadline_date = deadline
+    WHERE deadline_date IS NULL
+      AND deadline GLOB '????-??-??'
+  `);
+
+  database.exec(`
+    UPDATE jobs
+    SET deadline_parse_status = CASE
+      WHEN deadline_text IS NULL AND deadline_date IS NULL THEN 'missing'
+      WHEN deadline_date IS NOT NULL THEN 'parsed'
+      WHEN deadline_text IS NOT NULL THEN 'invalid'
+      ELSE deadline_parse_status
+    END
+    WHERE deadline_parse_status IS NULL
+       OR deadline_parse_status = ''
+       OR deadline_parse_status = 'missing'
+  `);
+
+  database.exec(`
+    UPDATE jobs
+    SET fit_status = CASE
+      WHEN status = 'filtered_out' THEN 'filtered_out'
+      WHEN status = 'matched' THEN 'matched'
+      WHEN status = 'low_fit' THEN 'low_fit'
+      WHEN status = 'evaluation_failed' THEN 'evaluation_failed'
+      WHEN status IN ('passed', 'draft_ready', 'applied', 'hold', 'withdrawn', 'closed') THEN
+        CASE
+          WHEN fit_score >= 3.5 THEN 'matched'
+          WHEN fit_score > 0 THEN 'low_fit'
+          ELSE 'passed'
+        END
+      ELSE 'unreviewed'
+    END
+    WHERE fit_status IS NULL
+       OR fit_status = ''
+  `);
+
+  database.exec(`
+    UPDATE jobs
+    SET workflow_status = CASE
+      WHEN status = 'generation_failed' THEN 'generation_failed'
+      WHEN status = 'generating' THEN 'generating'
+      WHEN status = 'draft_ready' THEN 'draft_ready'
+      WHEN detail_status = 'ready' THEN 'detail_ready'
+      WHEN detail_status IN ('missing', 'failed') THEN 'detail_pending'
+      ELSE 'idle'
+    END
+    WHERE workflow_status IS NULL
+       OR workflow_status = ''
+  `);
+
+  database.exec(`
+    UPDATE jobs
+    SET application_status = CASE
+      WHEN status IN ('applied', 'hold', 'withdrawn', 'closed') THEN status
+      ELSE 'not_started'
+    END
+    WHERE application_status IS NULL
+       OR application_status = ''
+  `);
 }
 
 export function closeDb(): void {
