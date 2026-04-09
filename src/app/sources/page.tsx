@@ -18,7 +18,23 @@ interface ScanHistory {
   total_found: number;
   new_count: number;
   passed_count: number;
+  fetched_count: number;
+  page_count: number;
+  truncated: number;
   status: string;
+}
+
+const PARTIAL_SCAN_NOTICE =
+  "\uC774\uBC88 \uC2A4\uCE94\uC740 \uC77C\uBD80\uB9CC \uC218\uC9D1\uB428";
+const COMPLETE_SCAN_NOTICE =
+  "\uC804\uCCB4 \uBC94\uC704 \uB204\uB77D \uC2E0\uD638 \uC5C6\uC74C";
+
+function getScanNotice(item: ScanHistory): string {
+  if (item.truncated) {
+    return `${PARTIAL_SCAN_NOTICE} (${item.page_count}p / ${item.fetched_count})`;
+  }
+
+  return COMPLETE_SCAN_NOTICE;
 }
 
 async function fetchSourcesPageData(): Promise<{
@@ -249,7 +265,15 @@ export default function SourcesPage() {
                   <td className="font-data py-[14px] text-[13px] text-[var(--muted-foreground)]">
                     {item.status === "failed" ? "1" : "0"}
                   </td>
-                  <td className="text-accent py-[14px] text-[13px]">상세 보기</td>
+                  <td
+                    className={`py-[14px] text-[13px] ${
+                      item.truncated
+                        ? "text-[#c2410c]"
+                        : "text-accent"
+                    }`}
+                  >
+                    {getScanNotice(item)}
+                  </td>
                 </tr>
               ))}
             </tbody>

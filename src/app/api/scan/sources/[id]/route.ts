@@ -9,8 +9,16 @@ export async function PUT(
   const { validateScanSourceConfig } = await import("@/lib/scan-source-config");
   const { getDb } = await import("@/lib/db");
   const db = getDb();
+  const source = db
+    .prepare("SELECT channel FROM sources WHERE id = ?")
+    .get(id) as { channel: string } | undefined;
   const sets: string[] = [];
   const values: unknown[] = [];
+  let warnings: string[] = [];
+
+  if (!source) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   if (body.name !== undefined) {
     const normalizedName = String(body.name).trim();
@@ -24,10 +32,10 @@ export async function PUT(
   }
 
   if (body.config !== undefined) {
-    let normalizedConfig;
+    let validation;
 
     try {
-      normalizedConfig = validateScanSourceConfig(body.config);
+      validation = validateScanSourceConfig(source.channel, body.config);
     } catch (error) {
       return NextResponse.json(
         {
@@ -38,8 +46,9 @@ export async function PUT(
       );
     }
 
+    warnings = validation.warnings;
     sets.push("config = ?");
-    values.push(JSON.stringify(normalizedConfig));
+    values.push(JSON.stringify(validation.config));
   }
 
   if (body.enabled !== undefined) {
@@ -52,13 +61,9 @@ export async function PUT(
   }
 
   values.push(id);
-  const result = db.prepare(`UPDATE sources SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+  db.prepare(`UPDATE sources SET ${sets.join(", ")} WHERE id = ?`).run(...values);
 
-  if (result.changes === 0) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, warnings });
 }
 
 export async function DELETE(

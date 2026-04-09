@@ -129,6 +129,9 @@ function initSchema(database: Database.Database): void {
       duplicate_count INTEGER DEFAULT 0,
       filtered_count  INTEGER DEFAULT 0,
       passed_count    INTEGER DEFAULT 0,
+      fetched_count   INTEGER DEFAULT 0,
+      page_count      INTEGER DEFAULT 1,
+      truncated       INTEGER DEFAULT 0,
       error_message   TEXT,
       FOREIGN KEY (source_id) REFERENCES sources(id)
     );
@@ -328,6 +331,30 @@ function migrateSchema(database: Database.Database): void {
     { name: "created_at", type: "TEXT", definition: "TEXT" },
     { name: "updated_at", type: "TEXT", definition: "TEXT" },
   ]);
+
+  ensureColumns(database, "scan_runs", [
+    { name: "fetched_count", type: "INTEGER", definition: "INTEGER DEFAULT 0" },
+    { name: "page_count", type: "INTEGER", definition: "INTEGER DEFAULT 1" },
+    { name: "truncated", type: "INTEGER", definition: "INTEGER DEFAULT 0" },
+  ]);
+
+  database.exec(`
+    UPDATE scan_runs
+    SET fetched_count = COALESCE(total_found, 0)
+    WHERE fetched_count IS NULL
+  `);
+
+  database.exec(`
+    UPDATE scan_runs
+    SET page_count = 1
+    WHERE page_count IS NULL OR page_count < 1
+  `);
+
+  database.exec(`
+    UPDATE scan_runs
+    SET truncated = 0
+    WHERE truncated IS NULL
+  `);
 
   database.exec(`
     UPDATE jobs

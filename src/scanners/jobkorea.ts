@@ -1,7 +1,12 @@
 import * as cheerio from "cheerio";
 
 import { extractReadableText } from "@/scanners/detail-text";
-import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
+import type {
+  ScanResult,
+  Scanner,
+  ScannerConfig,
+  ScannerRunPayload,
+} from "@/scanners/types";
 
 export function parseJobKoreaHtml(html: string): ScanResult[] {
   const $ = cheerio.load(html);
@@ -46,7 +51,7 @@ export function parseJobKoreaHtml(html: string): ScanResult[] {
 export const jobkoreaScanner: Scanner = {
   name: "jobkorea",
 
-  async scan(config: ScannerConfig): Promise<ScanResult[]> {
+  async scan(config: ScannerConfig): Promise<ScannerRunPayload> {
     const keyword = config.keywords.join(" ");
     const url = `https://www.jobkorea.co.kr/Search/?stext=${encodeURIComponent(
       keyword
@@ -66,7 +71,17 @@ export const jobkoreaScanner: Scanner = {
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    return parseJobKoreaHtml(html);
+    const results = parseJobKoreaHtml(html);
+
+    return {
+      results,
+      meta: {
+        // JobKorea currently fetches only the first search page.
+        truncated: results.length > 0,
+        page_count: 1,
+        fetched_count: results.length,
+      },
+    };
   },
 
   async fetchDetail(result: ScanResult): Promise<string | null> {

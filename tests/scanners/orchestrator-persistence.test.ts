@@ -220,4 +220,85 @@ describe("Scan Orchestrator persistence", () => {
     },
     TEST_TIMEOUT_MS
   );
+
+  it(
+    "persists truncation metadata reported by the scanner",
+    async () => {
+      const { getDb } = await import("@/lib/db");
+      const db = getDb();
+      db.prepare(
+        "INSERT INTO sources (id, channel, name, config) VALUES (?, ?, ?, ?)"
+      ).run(1, "saramin", "Saramin Source", JSON.stringify({ keywords: ["java"] }));
+
+      saraminScanMock.mockResolvedValue({
+        results: [
+          {
+            source: "saramin",
+            source_id: "1003",
+            company: "Gamma",
+            position: "Data Engineer",
+            location: "Seoul",
+            employment_type: "Full-time",
+            raw_url: "https://example.com/jobs/1003",
+            listing_text: "Data listing summary",
+          },
+        ],
+        meta: {
+          truncated: true,
+          page_count: 1,
+          fetched_count: 100,
+        },
+      });
+      saveListingJobMock.mockReturnValue("listings/JOB-0002.md");
+      saveDetailJobMock.mockReturnValue("details/JOB-0002.md");
+      saraminFetchDetailMock.mockResolvedValue("# Detail JD\n- Full description");
+
+      const { runScan } = await import("@/scanners/orchestrator");
+
+      const result = await runScan(
+        1,
+        "saramin",
+        { keywords: ["java"] },
+        {
+          include_keywords: ["Data"],
+          exclude_keywords: [],
+          locations: ["Seoul"],
+          exclude_company_sizes: [],
+          min_employee_count: 0,
+          allow_startup: true,
+          exclude_entry_only: false,
+        }
+      );
+
+      expect(result).toMatchObject({
+        total_found: 1,
+        fetched_count: 100,
+        page_count: 1,
+        truncated: true,
+      });
+
+      const scanRun = db
+        .prepare(
+          `
+            SELECT truncated, page_count, fetched_count
+            FROM scan_runs
+            WHERE source_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+          `
+        )
+        .get(1) as {
+        truncated: number;
+        page_count: number;
+        fetched_count: number;
+      };
+
+      expect(scanRun).toEqual({
+        truncated: 1,
+        page_count: 1,
+        fetched_count: 100,
+      });
+    },
+    TEST_TIMEOUT_MS
+  );
 });

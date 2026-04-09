@@ -2,12 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   const { getDb } = await import("@/lib/db");
+  const { parseStoredScanSourceConfig } = await import(
+    "@/lib/scan-source-config"
+  );
   const db = getDb();
   const sources = db
     .prepare("SELECT * FROM sources ORDER BY created_at DESC")
-    .all();
+    .all() as Array<{
+      channel: string;
+      config: string;
+    } & Record<string, unknown>>;
 
-  return NextResponse.json(sources);
+  const normalizedSources = sources.map((source) => {
+    try {
+      const validation = parseStoredScanSourceConfig(source.channel, source.config);
+
+      return {
+        ...source,
+        config: JSON.stringify(validation.config),
+        config_warnings: validation.warnings,
+      };
+    } catch (error) {
+      return {
+        ...source,
+        config_warnings: [],
+        config_error: (error as { details?: string[] }).details || [],
+      };
+    }
+  });
+
+  return NextResponse.json(normalizedSources);
 }
 
 export async function POST(request: NextRequest) {
@@ -40,10 +64,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let normalizedConfig;
+  let validation;
 
   try {
-    normalizedConfig = validateScanSourceConfig(config);
+    validation = validateScanSourceConfig(channel, config);
   } catch (error) {
     return NextResponse.json(
       {
@@ -58,7 +82,10 @@ export async function POST(request: NextRequest) {
   const db = getDb();
   const result = db
     .prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
-    .run(channel, name.trim(), JSON.stringify(normalizedConfig));
+    .run(channel, name.trim(), JSON.stringify(validation.config));
 
-  return NextResponse.json({ id: result.lastInsertRowid }, { status: 201 });
+  return NextResponse.json(
+    { id: result.lastInsertRowid, warnings: validation.warnings },
+    { status: 201 }
+  );
 }

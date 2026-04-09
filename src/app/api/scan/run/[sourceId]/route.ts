@@ -26,10 +26,10 @@ export async function POST(
     return NextResponse.json({ error: "Source not found" }, { status: 404 });
   }
 
-  let config;
+  let validation;
 
   try {
-    config = parseStoredScanSourceConfig(source.config);
+    validation = parseStoredScanSourceConfig(source.channel, source.config);
   } catch (error) {
     return NextResponse.json(
       {
@@ -60,11 +60,16 @@ export async function POST(
     const result = await runScan(
       source.id,
       source.channel,
-      config,
+      validation.config,
       DEFAULT_FILTER_CONFIG
     );
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...(validation.warnings.length > 0
+        ? { config_warnings: validation.warnings }
+        : {}),
+      ...result,
+    });
   } catch (error) {
     if (error instanceof ScanAlreadyRunningError) {
       return NextResponse.json(

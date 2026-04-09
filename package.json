@@ -9,7 +9,9 @@
     "start": "next start -p 3010",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "jobs:dedupe:report": "node scripts/reconcile-job-duplicates.mjs",
+    "jobs:dedupe:apply": "node scripts/reconcile-job-duplicates.mjs --apply"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

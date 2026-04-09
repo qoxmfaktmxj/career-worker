@@ -22,7 +22,7 @@ export async function POST() {
 
   for (const source of sources) {
     try {
-      const config = parseStoredScanSourceConfig(source.config);
+      const validation = parseStoredScanSourceConfig(source.channel, source.config);
       const missingConfig = getMissingScannerConfig(source.channel);
 
       if (missingConfig) {
@@ -42,13 +42,16 @@ export async function POST() {
       const result = await runScan(
         source.id,
         source.channel,
-        config,
+        validation.config,
         DEFAULT_FILTER_CONFIG
       );
 
       results.push({
         source_id: source.id,
         channel: source.channel,
+        ...(validation.warnings.length > 0
+          ? { config_warnings: validation.warnings }
+          : {}),
         ...result,
       });
     } catch (error) {

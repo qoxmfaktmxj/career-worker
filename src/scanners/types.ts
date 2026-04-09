@@ -15,6 +15,17 @@ export interface ScanResult {
   questions?: string[];
 }
 
+export interface ScannerRunMeta {
+  truncated: boolean;
+  page_count: number;
+  fetched_count: number;
+}
+
+export interface ScannerRunPayload {
+  results: ScanResult[];
+  meta: ScannerRunMeta;
+}
+
 export interface ScannerConfig {
   keywords: string[];
   location_codes: string[];
@@ -23,6 +34,6 @@ export interface ScannerConfig {
 
 export interface Scanner {
   name: string;
-  scan(config: ScannerConfig): Promise<ScanResult[]>;
+  scan(config: ScannerConfig): Promise<ScanResult[] | ScannerRunPayload>;
   fetchDetail?(result: ScanResult): Promise<string | null>;
 }

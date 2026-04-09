@@ -1,5 +1,10 @@
 import { extractReadableText } from "@/scanners/detail-text";
-import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
+import type {
+  ScanResult,
+  Scanner,
+  ScannerConfig,
+  ScannerRunPayload,
+} from "@/scanners/types";
 
 interface SaraminJob {
   id: string;
@@ -65,7 +70,7 @@ export function parseSaraminResponse(response: SaraminApiResponse): ScanResult[]
 export const saraminScanner: Scanner = {
   name: "saramin",
 
-  async scan(config: ScannerConfig): Promise<ScanResult[]> {
+  async scan(config: ScannerConfig): Promise<ScannerRunPayload> {
     const apiKey = process.env.SARAMIN_API_KEY;
 
     if (!apiKey) {
@@ -94,8 +99,17 @@ export const saraminScanner: Scanner = {
     }
 
     const data = (await response.json()) as SaraminApiResponse;
+    const results = parseSaraminResponse(data);
+    const fetchedCount = results.length;
 
-    return parseSaraminResponse(data);
+    return {
+      results,
+      meta: {
+        truncated: fetchedCount >= 100,
+        page_count: 1,
+        fetched_count: fetchedCount,
+      },
+    };
   },
 
   async fetchDetail(result: ScanResult): Promise<string | null> {

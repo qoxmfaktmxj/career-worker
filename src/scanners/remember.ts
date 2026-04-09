@@ -1,7 +1,12 @@
 import * as cheerio from "cheerio";
 
 import { extractReadableText } from "@/scanners/detail-text";
-import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
+import type {
+  ScanResult,
+  Scanner,
+  ScannerConfig,
+  ScannerRunPayload,
+} from "@/scanners/types";
 
 export function parseRememberHtml(html: string): ScanResult[] {
   const $ = cheerio.load(html);
@@ -43,7 +48,7 @@ export function parseRememberHtml(html: string): ScanResult[] {
 export const rememberScanner: Scanner = {
   name: "remember",
 
-  async scan(config: ScannerConfig): Promise<ScanResult[]> {
+  async scan(config: ScannerConfig): Promise<ScannerRunPayload> {
     const keyword = config.keywords.join(" ");
     const url = `https://career.rememberapp.co.kr/search?query=${encodeURIComponent(
       keyword
@@ -60,7 +65,17 @@ export const rememberScanner: Scanner = {
     }
 
     const html = await response.text();
-    return parseRememberHtml(html);
+    const results = parseRememberHtml(html);
+
+    return {
+      results,
+      meta: {
+        // Remember currently fetches only the first search page.
+        truncated: results.length > 0,
+        page_count: 1,
+        fetched_count: results.length,
+      },
+    };
   },
 
   async fetchDetail(result: ScanResult): Promise<string | null> {

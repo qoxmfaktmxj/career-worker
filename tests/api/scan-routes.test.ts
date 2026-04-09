@@ -68,13 +68,14 @@ describe("Scan API routes", () => {
     );
 
     expect(createResponse.status).toBe(201);
-    expect(await createResponse.json()).toEqual({ id: 1 });
+    expect(await createResponse.json()).toEqual({ id: 1, warnings: [] });
 
     const listResponse = await sourcesRoute.GET();
     const sources = (await listResponse.json()) as Array<{
       channel: string;
       name: string;
       config: string;
+      config_warnings?: string[];
       enabled: number;
     }>;
 
@@ -84,6 +85,7 @@ describe("Scan API routes", () => {
       name: "사람인 백엔드",
       enabled: 1,
     });
+    expect(sources[0]?.config_warnings).toEqual([]);
     expect(JSON.parse(sources[0].config)).toEqual({
       keywords: ["java", "spring"],
       location_codes: ["11000"],
@@ -106,6 +108,46 @@ describe("Scan API routes", () => {
     expect(await response.json()).toEqual({
       error: "invalid source config",
       details: ["keywords must contain at least one string"],
+    });
+  });
+
+  it("returns warnings when a channel ignores unsupported config fields", async () => {
+    const sourcesRoute = await import("@/app/api/scan/sources/route");
+
+    const createResponse = await sourcesRoute.POST(
+      makeJsonRequest("http://localhost/api/scan/sources", "POST", {
+        channel: "jobkorea",
+        name: "JobKorea Frontend",
+        config: {
+          keywords: ["react"],
+          location_codes: ["11000"],
+          extra_field: "ignored",
+        },
+      })
+    );
+
+    expect(createResponse.status).toBe(201);
+    expect(await createResponse.json()).toEqual({
+      id: 1,
+      warnings: [
+        "jobkorea ignores location_codes; values were dropped",
+        "ignored unsupported config fields: extra_field",
+      ],
+    });
+
+    const listResponse = await sourcesRoute.GET();
+    const sources = (await listResponse.json()) as Array<{
+      channel: string;
+      config: string;
+      config_warnings?: string[];
+    }>;
+
+    expect(sources[0]?.channel).toBe("jobkorea");
+    expect(sources[0]?.config_warnings).toEqual([]);
+    expect(JSON.parse(sources[0]?.config ?? "{}")).toEqual({
+      keywords: ["react"],
+      location_codes: [],
+      exclude_keywords: [],
     });
   });
 
@@ -144,7 +186,7 @@ describe("Scan API routes", () => {
     );
 
     expect(updateResponse.status).toBe(200);
-    expect(await updateResponse.json()).toEqual({ success: true });
+    expect(await updateResponse.json()).toEqual({ success: true, warnings: [] });
 
     const updatedSource = db
       .prepare("SELECT name, config, enabled FROM sources WHERE id = ?")
@@ -172,6 +214,29 @@ describe("Scan API routes", () => {
         count: number;
       }
     ).toEqual({ count: 0 });
+  });
+
+  it("returns warnings for legacy config rows on GET", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare("INSERT INTO sources (channel, name, config) VALUES (?, ?, ?)")
+      .run(
+        "remember",
+        "Remember Backend",
+        JSON.stringify({ keywords: ["node"], location_codes: ["11000"] })
+      );
+
+    const sourcesRoute = await import("@/app/api/scan/sources/route");
+    const response = await sourcesRoute.GET();
+    const rows = (await response.json()) as Array<{
+      channel: string;
+      config_warnings?: string[];
+    }>;
+
+    expect(rows[0]?.channel).toBe("remember");
+    expect(rows[0]?.config_warnings).toEqual([
+      "remember ignores location_codes; values were dropped",
+    ]);
   });
 
   it("returns 409 when deleting a source that has scan history", async () => {
@@ -454,9 +519,12 @@ describe("Scan API routes", () => {
         duplicate_count,
         filtered_count,
         passed_count,
+        fetched_count,
+        page_count,
+        truncated,
         finished_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(1, "completed", 5, 3, 1, 1, 2);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(1, "completed", 5, 3, 1, 1, 2, 100, 1, 1);
 
     const historyRoute = await import("@/app/api/scan/history/route");
     const response = await historyRoute.GET();
@@ -464,6 +532,9 @@ describe("Scan API routes", () => {
       source_name: string;
       channel: string;
       total_found: number;
+      fetched_count: number;
+      page_count: number;
+      truncated: number;
     }>;
 
     expect(response.status).toBe(200);
@@ -472,6 +543,9 @@ describe("Scan API routes", () => {
       source_name: "사람인",
       channel: "saramin",
       total_found: 5,
+      fetched_count: 100,
+      page_count: 1,
+      truncated: 1,
     });
   });
 });

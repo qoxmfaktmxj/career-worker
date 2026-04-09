@@ -16,7 +16,13 @@ import { acquireScanLock, releaseScanLock } from "@/lib/scan-lock";
 import { jobkoreaScanner } from "@/scanners/jobkorea";
 import { rememberScanner } from "@/scanners/remember";
 import { saraminScanner } from "@/scanners/saramin";
-import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
+import type {
+  ScanResult,
+  Scanner,
+  ScannerConfig,
+  ScannerRunMeta,
+  ScannerRunPayload,
+} from "@/scanners/types";
 
 const SCANNERS: Record<string, Scanner> = {
   saramin: saraminScanner,
@@ -105,6 +111,42 @@ export interface ScanRunResult {
   duplicate_count: number;
   filtered_count: number;
   passed_count: number;
+  fetched_count: number;
+  page_count: number;
+  truncated: boolean;
+}
+
+function normalizeScannerRunPayload(
+  payload: ScanResult[] | ScannerRunPayload
+): ScannerRunPayload {
+  if (Array.isArray(payload)) {
+    return {
+      results: payload,
+      meta: {
+        truncated: false,
+        page_count: 1,
+        fetched_count: payload.length,
+      },
+    };
+  }
+
+  const meta: ScannerRunMeta = {
+    truncated: Boolean(payload.meta?.truncated),
+    page_count:
+      typeof payload.meta?.page_count === "number" && payload.meta.page_count > 0
+        ? payload.meta.page_count
+        : 1,
+    fetched_count:
+      typeof payload.meta?.fetched_count === "number" &&
+      payload.meta.fetched_count >= 0
+        ? payload.meta.fetched_count
+        : payload.results.length,
+  };
+
+  return {
+    results: payload.results,
+    meta,
+  };
 }
 
 type PendingResult = {
@@ -161,13 +203,17 @@ export async function runScan(
   runId = Number(run.lastInsertRowid);
 
   try {
-    const results = await scanner.scan(config);
+    const scannerPayload = normalizeScannerRunPayload(await scanner.scan(config));
+    const results = scannerPayload.results;
     const stats: ScanRunResult = {
       total_found: results.length,
       new_count: 0,
       duplicate_count: 0,
       filtered_count: 0,
       passed_count: 0,
+      fetched_count: scannerPayload.meta.fetched_count,
+      page_count: scannerPayload.meta.page_count,
+      truncated: scannerPayload.meta.truncated,
     };
     const pendingResults: PendingResult[] = [];
     const seenFingerprints = new Set<string>();
@@ -338,7 +384,10 @@ export async function runScan(
           new_count = ?,
           duplicate_count = ?,
           filtered_count = ?,
-          passed_count = ?
+          passed_count = ?,
+          fetched_count = ?,
+          page_count = ?,
+          truncated = ?
       WHERE id = ?
     `).run(
       stats.total_found,
@@ -346,6 +395,9 @@ export async function runScan(
       stats.duplicate_count,
       stats.filtered_count,
       stats.passed_count,
+      stats.fetched_count,
+      stats.page_count,
+      stats.truncated ? 1 : 0,
       runId
     );
 
