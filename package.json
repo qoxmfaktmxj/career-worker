@@ -1,12 +1,12 @@
 {
   "name": "career-worker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3010",
+    "dev": "node scripts/next-runner.mjs dev",
     "build": "next build --webpack",
     "build:turbopack": "next build",
-    "start": "next start -p 3010",
+    "start": "node scripts/next-runner.mjs start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest"

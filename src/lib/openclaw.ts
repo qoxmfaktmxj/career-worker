@@ -4,6 +4,7 @@ import path from "path";
 import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
+let openClawAvailable: boolean | null = null;
 
 export interface OpenClawResponse {
   success: boolean;
@@ -118,4 +119,22 @@ export function loadPromptTemplate(promptName: string): string {
   );
 
   return fs.readFileSync(promptPath, "utf-8");
+}
+
+export async function checkOpenClawAvailable() {
+  if (openClawAvailable !== null) {
+    return openClawAvailable;
+  }
+
+  try {
+    await execFileAsync("openclaw", ["--version"], {
+      timeout: 5000,
+      maxBuffer: 1024 * 1024,
+    });
+    openClawAvailable = true;
+  } catch {
+    openClawAvailable = false;
+  }
+
+  return openClawAvailable;
 }

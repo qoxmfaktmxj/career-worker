@@ -21,12 +21,14 @@ export async function GET(
   } catch {
     // The raw markdown file may not exist for manually inserted test data.
   }
+  const { checkOpenClawAvailable } = await import("@/lib/openclaw");
+  const aiReady = await checkOpenClawAvailable();
 
   const outputs = db
     .prepare("SELECT * FROM outputs WHERE job_id = ? ORDER BY created_at DESC")
     .all(jobId);
 
-  return NextResponse.json({ ...(job as object), rawContent, outputs });
+  return NextResponse.json({ ...(job as object), rawContent, outputs, aiReady });
 }
 
 export async function PUT(
