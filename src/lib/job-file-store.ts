@@ -30,7 +30,15 @@ function jobsRootDir(): string {
   throw new Error("JOBS_DIR must be ./jobs or an absolute path");
 }
 
-function rawJobsDir(): string {
+function listingsJobsDir(): string {
+  return path.join(jobsRootDir(), "listings");
+}
+
+function detailsJobsDir(): string {
+  return path.join(jobsRootDir(), "details");
+}
+
+function legacyRawJobsDir(): string {
   return path.join(jobsRootDir(), "raw");
 }
 
@@ -38,38 +46,88 @@ function normalizedJobsDir(): string {
   return path.join(jobsRootDir(), "normalized");
 }
 
-function resolveStoredRawJobPath(relativePath: string): string {
+function resolveStoredMarkdownPath(relativePath: string): string {
   const normalized = relativePath.replace(/\\/g, "/");
+  const [typeDir, fileName, ...rest] = normalized.split("/");
 
-  if (!/^raw\/[^/]+\.md$/u.test(normalized)) {
-    throw new Error("Raw job path must stay within JOBS_DIR/raw");
+  if (!typeDir || !fileName || rest.length > 0 || !fileName.endsWith(".md")) {
+    throw new Error("Job markdown path must stay within JOBS_DIR");
   }
 
-  return path.join(rawJobsDir(), path.basename(normalized));
+  if (!["listings", "details", "raw"].includes(typeDir)) {
+    throw new Error("Job markdown path must stay within JOBS_DIR");
+  }
+
+  return path.join(jobsRootDir(), typeDir, path.basename(fileName));
 }
 
-export function saveRawJob(jobId: string, content: string): string {
-  const dir = rawJobsDir();
-  const filePath = path.join("raw", `${jobId}.md`);
+function resolveStoredJsonPath(relativePath: string): string {
+  const normalized = relativePath.replace(/\\/g, "/");
 
+  if (!/^normalized\/[^/]+\.json$/u.test(normalized)) {
+    throw new Error("Normalized job path must stay within JOBS_DIR/normalized");
+  }
+
+  return path.join(normalizedJobsDir(), path.basename(normalized));
+}
+
+function writeMarkdownFile(dir: string, relativeDir: string, jobId: string, content: string): string {
   ensureDir(dir);
   fs.writeFileSync(path.join(dir, `${jobId}.md`), content, "utf-8");
-
-  return filePath;
+  return path.join(relativeDir, `${jobId}.md`);
 }
 
-export function readRawJob(jobId: string): string {
-  return fs.readFileSync(path.join(rawJobsDir(), `${jobId}.md`), "utf-8");
+function readJobMarkdownById(dir: string, jobId: string): string {
+  return fs.readFileSync(path.join(dir, `${jobId}.md`), "utf-8");
 }
 
-export function deleteRawJob(relativePath: string): void {
-  const filePath = resolveStoredRawJobPath(relativePath);
+export function saveListingJob(jobId: string, content: string): string {
+  return writeMarkdownFile(listingsJobsDir(), "listings", jobId, content);
+}
+
+export function readListingJob(jobId: string): string {
+  return readJobMarkdownById(listingsJobsDir(), jobId);
+}
+
+export function saveDetailJob(jobId: string, content: string): string {
+  return writeMarkdownFile(detailsJobsDir(), "details", jobId, content);
+}
+
+export function readDetailJob(jobId: string): string {
+  return readJobMarkdownById(detailsJobsDir(), jobId);
+}
+
+export function readStoredJobMarkdown(relativePath: string): string {
+  return fs.readFileSync(resolveStoredMarkdownPath(relativePath), "utf-8");
+}
+
+export function deleteStoredJobMarkdown(relativePath: string): void {
+  const filePath = resolveStoredMarkdownPath(relativePath);
 
   if (!fs.existsSync(filePath)) {
     return;
   }
 
   fs.unlinkSync(filePath);
+}
+
+export function saveRawJob(jobId: string, content: string): string {
+  return saveDetailJob(jobId, content);
+}
+
+export function readRawJob(jobId: string): string {
+  const detailPath = path.join(detailsJobsDir(), `${jobId}.md`);
+
+  if (fs.existsSync(detailPath)) {
+    return fs.readFileSync(detailPath, "utf-8");
+  }
+
+  const legacyPath = path.join(legacyRawJobsDir(), `${jobId}.md`);
+  return fs.readFileSync(legacyPath, "utf-8");
+}
+
+export function deleteRawJob(relativePath: string): void {
+  deleteStoredJobMarkdown(relativePath);
 }
 
 export function saveNormalizedJob(
@@ -92,5 +150,13 @@ export function saveNormalizedJob(
 export function readNormalizedJob(jobId: string): Record<string, unknown> {
   return JSON.parse(
     fs.readFileSync(path.join(normalizedJobsDir(), `${jobId}.json`), "utf-8")
+  ) as Record<string, unknown>;
+}
+
+export function readStoredNormalizedJob(
+  relativePath: string
+): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(resolveStoredJsonPath(relativePath), "utf-8")
   ) as Record<string, unknown>;
 }

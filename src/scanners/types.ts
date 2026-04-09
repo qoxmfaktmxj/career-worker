@@ -10,7 +10,8 @@ export interface ScanResult {
   raw_url: string;
   deadline?: string;
   salary_text?: string;
-  raw_text: string;
+  listing_text: string;
+  raw_text?: string;
   questions?: string[];
 }
 
@@ -23,4 +24,5 @@ export interface ScannerConfig {
 export interface Scanner {
   name: string;
   scan(config: ScannerConfig): Promise<ScanResult[]>;
+  fetchDetail?(result: ScanResult): Promise<string | null>;
 }

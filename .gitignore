@@ -13,6 +13,8 @@ out/
 !/profile/links.md
 /outputs/
 /jobs/raw/
+/jobs/listings/
+/jobs/details/
 /jobs/normalized/
 coverage/
 *.db
@@ -35,3 +37,4 @@ yarn-error.log*
 .playwright-smoke/
 test-results/
 tmp/
+.tmp/

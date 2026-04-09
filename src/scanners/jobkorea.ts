@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 
+import { extractReadableText } from "@/scanners/detail-text";
 import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
 
 export function parseJobKoreaHtml(html: string): ScanResult[] {
@@ -34,6 +35,7 @@ export function parseJobKoreaHtml(html: string): ScanResult[] {
         ? href
         : `https://www.jobkorea.co.kr${href}`,
       deadline: dateText,
+      listing_text: [position, experience, location].filter(Boolean).join("\n"),
       raw_text: [position, experience, location].filter(Boolean).join("\n"),
     });
   });
@@ -65,5 +67,26 @@ export const jobkoreaScanner: Scanner = {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     return parseJobKoreaHtml(html);
+  },
+
+  async fetchDetail(result: ScanResult): Promise<string | null> {
+    if (!result.raw_url) {
+      return null;
+    }
+
+    const response = await fetch(result.raw_url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CareerWorker/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`JobKorea detail fetch error: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const content = extractReadableText(html);
+
+    return content || null;
   },
 };

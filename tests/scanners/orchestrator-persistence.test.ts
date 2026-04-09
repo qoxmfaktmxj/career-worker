@@ -9,8 +9,10 @@ const TEST_DB_PATH = path.join(
 const TEST_DATA_DIR = path.join(__dirname, "../../data");
 const TEST_JOBS_DIR = path.join(__dirname, "../../tmp/orchestrator-persistence/jobs");
 
-const saveRawJobMock = vi.fn();
+const saveListingJobMock = vi.fn();
+const saveDetailJobMock = vi.fn();
 const saraminScanMock = vi.fn();
+const saraminFetchDetailMock = vi.fn();
 
 vi.mock("@/lib/job-file-store", async () => {
   const actual = await vi.importActual<typeof import("@/lib/job-file-store")>(
@@ -19,7 +21,8 @@ vi.mock("@/lib/job-file-store", async () => {
 
   return {
     ...actual,
-    saveRawJob: (...args: unknown[]) => saveRawJobMock(...args),
+    saveListingJob: (...args: unknown[]) => saveListingJobMock(...args),
+    saveDetailJob: (...args: unknown[]) => saveDetailJobMock(...args),
   };
 });
 
@@ -27,6 +30,7 @@ vi.mock("@/scanners/saramin", () => ({
   saraminScanner: {
     name: "saramin",
     scan: (...args: unknown[]) => saraminScanMock(...args),
+    fetchDetail: (...args: unknown[]) => saraminFetchDetailMock(...args),
   },
 }));
 
@@ -69,7 +73,7 @@ describe("Scan Orchestrator persistence", () => {
     });
   });
 
-  it("rolls back inserted jobs when raw file persistence fails", async () => {
+  it("rolls back inserted jobs when listing file persistence fails", async () => {
     const { getDb } = await import("@/lib/db");
     const db = getDb();
     db.prepare("INSERT INTO sources (id, channel, name, config) VALUES (?, ?, ?, ?)")
@@ -84,10 +88,10 @@ describe("Scan Orchestrator persistence", () => {
         location: "Seoul",
         employment_type: "Full-time",
         raw_url: "https://example.com/jobs/1001",
-        raw_text: "Java Spring",
+        listing_text: "Java Spring",
       },
     ]);
-    saveRawJobMock.mockImplementation(() => {
+    saveListingJobMock.mockImplementation(() => {
       throw new Error("disk full");
     });
 
@@ -99,9 +103,9 @@ describe("Scan Orchestrator persistence", () => {
         "saramin",
         { keywords: ["java"] },
         {
-          include_keywords: [],
+          include_keywords: ["Java"],
           exclude_keywords: [],
-          locations: [],
+          locations: ["Seoul"],
           exclude_company_sizes: [],
           min_employee_count: 0,
           allow_startup: true,
@@ -123,5 +127,61 @@ describe("Scan Orchestrator persistence", () => {
         status: string;
       }
     ).toEqual({ status: "failed" });
+  });
+
+  it("stores detail file path when detail fetch succeeds", async () => {
+    const { getDb } = await import("@/lib/db");
+    const db = getDb();
+    db.prepare("INSERT INTO sources (id, channel, name, config) VALUES (?, ?, ?, ?)")
+      .run(1, "saramin", "사람인", JSON.stringify({ keywords: ["java"] }));
+
+    saraminScanMock.mockResolvedValue([
+      {
+        source: "saramin",
+        source_id: "1002",
+        company: "Beta",
+        position: "Platform Engineer",
+        location: "Seoul",
+        employment_type: "Full-time",
+        raw_url: "https://example.com/jobs/1002",
+        listing_text: "Platform listing summary",
+      },
+    ]);
+    saveListingJobMock.mockReturnValue("listings/JOB-0001.md");
+    saveDetailJobMock.mockReturnValue("details/JOB-0001.md");
+    saraminFetchDetailMock.mockResolvedValue("# Detail JD\n- Full description");
+
+    const { runScan } = await import("@/scanners/orchestrator");
+
+    await runScan(
+      1,
+      "saramin",
+      { keywords: ["java"] },
+      {
+        include_keywords: ["Platform"],
+        exclude_keywords: [],
+        locations: ["Seoul"],
+        exclude_company_sizes: [],
+        min_employee_count: 0,
+        allow_startup: true,
+        exclude_entry_only: false,
+      }
+    );
+
+    const savedJob = db
+      .prepare(
+        "SELECT listing_file, detail_file, detail_status FROM jobs LIMIT 1"
+      )
+      .get() as {
+      listing_file: string;
+      detail_file: string;
+      detail_status: string;
+    };
+
+    expect(savedJob).toEqual({
+      listing_file: "listings/JOB-0001.md",
+      detail_file: "details/JOB-0001.md",
+      detail_status: "ready",
+    });
   });
 });

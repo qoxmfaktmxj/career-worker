@@ -32,14 +32,19 @@ describe("FileStore", () => {
     fs.rmSync(TEST_DIR, { recursive: true, force: true });
   });
 
-  it("should save and read raw job file", async () => {
-    const { saveRawJob, readRawJob } = await import("@/lib/file-store");
+  it("should save and read listing/detail job files separately", async () => {
+    const {
+      saveListingJob,
+      readListingJob,
+      saveDetailJob,
+      readDetailJob,
+    } = await import("@/lib/file-store");
 
-    saveRawJob("JOB-0001", "# Test JD\nSome content");
+    saveListingJob("JOB-0001", "# Listing Snapshot\nSummary");
+    saveDetailJob("JOB-0001", "# Detail JD\nFull description");
 
-    const content = readRawJob("JOB-0001");
-
-    expect(content).toContain("# Test JD");
+    expect(readListingJob("JOB-0001")).toContain("Listing Snapshot");
+    expect(readDetailJob("JOB-0001")).toContain("Full description");
   });
 
   it("should save and read normalized job JSON", async () => {

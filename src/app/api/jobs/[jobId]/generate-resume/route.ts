@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildPrompt, callOpenClaw, loadPromptTemplate } from "@/lib/openclaw";
+
+import {
+  JOB_DETAIL_NOT_READY_MESSAGE,
+  JobDetailNotReadyError,
+  requireJobDetailContent,
+} from "@/lib/job-content";
+import {
+  buildPrompt,
+  callOpenClaw,
+  getOpenClawFailure,
+  loadPromptTemplate,
+} from "@/lib/openclaw";
+
+const INTERNAL_ERROR_MESSAGE =
+  "\uC694\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.";
 
 export async function POST(
   _: NextRequest,
@@ -17,14 +31,15 @@ export async function POST(
   }
 
   try {
-    const [{ readRawJob }, { saveOutput }, { readProfileFile }] =
+    const [{ saveOutput }, { readProfileFile }, { getJobContent }] =
       await Promise.all([
-        import("@/lib/job-file-store"),
         import("@/lib/output-store"),
         import("@/lib/profile-store"),
+        import("@/lib/job-content"),
       ]);
     const resume = readProfileFile("master_resume.md");
-    const rawJd = readRawJob(jobId);
+    const detailJd = requireJobDetailContent(job);
+    const { listingContent } = getJobContent(job);
     const evaluation = JSON.stringify(
       {
         fit_score: job.fit_score,
@@ -42,17 +57,17 @@ export async function POST(
       2
     );
     const template = loadPromptTemplate("generate-resume");
-    const prompt = buildPrompt(template, { resume, jd: rawJd, evaluation });
+    const prompt = buildPrompt(template, {
+      resume,
+      jd: detailJd,
+      listing_snapshot: listingContent || "",
+      evaluation,
+    });
     const response = await callOpenClaw(prompt);
 
     if (!response.success) {
-      return NextResponse.json(
-        {
-          error: response.error || "AI 응답 실패",
-          raw: response.raw,
-        },
-        { status: 500 }
-      );
+      const failure = getOpenClawFailure(response);
+      return NextResponse.json(failure.body, { status: failure.status });
     }
 
     const resumeMarkdown =
@@ -73,8 +88,21 @@ export async function POST(
       data: response.data,
     });
   } catch (error) {
+    if (error instanceof JobDetailNotReadyError) {
+      return NextResponse.json(
+        {
+          error: "job_detail_not_ready",
+          message: JOB_DETAIL_NOT_READY_MESSAGE,
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { error: (error as Error).message },
+      {
+        error: "internal_error",
+        message: (error as Error).message || INTERNAL_ERROR_MESSAGE,
+      },
       { status: 500 }
     );
   }

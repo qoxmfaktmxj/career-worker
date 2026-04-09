@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { getJobContent } from "@/lib/job-content";
+import { isOpenClawAvailable } from "@/lib/openclaw";
+
 export async function GET(
   _: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
@@ -7,26 +10,28 @@ export async function GET(
   const { jobId } = await params;
   const { getDb } = await import("@/lib/db");
   const db = getDb();
-  const job = db.prepare("SELECT * FROM jobs WHERE job_id = ?").get(jobId);
+  const job = db
+    .prepare("SELECT * FROM jobs WHERE job_id = ?")
+    .get(jobId) as Record<string, unknown> | undefined;
 
   if (!job) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  let rawContent = "";
-
-  try {
-    const { readRawJob } = await import("@/lib/job-file-store");
-    rawContent = readRawJob(jobId);
-  } catch {
-    // The raw markdown file may not exist for manually inserted test data.
-  }
-
+  const { listingContent, detailContent, detailStatus } = getJobContent(job);
   const outputs = db
     .prepare("SELECT * FROM outputs WHERE job_id = ? ORDER BY created_at DESC")
     .all(jobId);
 
-  return NextResponse.json({ ...(job as object), rawContent, outputs });
+  return NextResponse.json({
+    ...job,
+    listingContent: listingContent || "",
+    detailContent: detailContent || "",
+    detail_status: detailStatus,
+    openclaw_ready: isOpenClawAvailable(),
+    rawContent: detailContent || listingContent || "",
+    outputs,
+  });
 }
 
 export async function PUT(

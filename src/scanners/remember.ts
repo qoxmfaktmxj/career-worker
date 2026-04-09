@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 
+import { extractReadableText } from "@/scanners/detail-text";
 import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
 
 export function parseRememberHtml(html: string): ScanResult[] {
@@ -31,6 +32,7 @@ export function parseRememberHtml(html: string): ScanResult[] {
         ? href
         : `https://career.rememberapp.co.kr${href}`,
       deadline,
+      listing_text: [position, location].filter(Boolean).join("\n"),
       raw_text: [position, location].filter(Boolean).join("\n"),
     });
   });
@@ -59,5 +61,26 @@ export const rememberScanner: Scanner = {
 
     const html = await response.text();
     return parseRememberHtml(html);
+  },
+
+  async fetchDetail(result: ScanResult): Promise<string | null> {
+    if (!result.raw_url) {
+      return null;
+    }
+
+    const response = await fetch(result.raw_url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CareerWorker/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Remember detail fetch error: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const content = extractReadableText(html);
+
+    return content || null;
   },
 };

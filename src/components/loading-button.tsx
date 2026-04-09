@@ -7,6 +7,7 @@ interface LoadingButtonProps {
   label: string;
   loadingLabel: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function LoadingButton({
@@ -14,6 +15,7 @@ export function LoadingButton({
   label,
   loadingLabel,
   className = "",
+  disabled = false,
 }: LoadingButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +32,7 @@ export function LoadingButton({
   return (
     <button
       onClick={handleClick}
-      disabled={loading}
+      disabled={loading || disabled}
       className={`h-10 rounded-[4px] border border-transparent px-4 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {loading ? loadingLabel : label}

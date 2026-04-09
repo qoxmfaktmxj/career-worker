@@ -29,6 +29,10 @@ interface JobDetail {
   fit_reason: string | null;
   risks: string | null;
   recommended_stories: string | null;
+  listingContent: string;
+  detailContent: string;
+  detail_status: string;
+  openclaw_ready: boolean;
   rawContent: string;
   outputs: OutputItem[];
 }
@@ -43,10 +47,19 @@ const TEXT = {
   outputs: "\uC0B0\uCD9C\uBB3C",
   countUnit: "\uAC74",
   scorePending: "\uD3C9\uAC00 \uC804",
-  rawTitle: "\uC6D0\uBB38 JD",
+  rawTitle: "\uC0C1\uC138 JD",
   rawDescription:
-    "\uC218\uC9D1\uB41C \uC6D0\uBB38 \uACF5\uACE0\uB97C \uADF8\uB300\uB85C \uD655\uC778\uD558\uB294 \uC601\uC5ED\uC785\uB2C8\uB2E4.",
-  rawEmpty: "\uC6D0\uBB38 JD\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+    "\uC2A4\uCE90\uB108\uAC00 \uC218\uC9D1\uD55C \uACF5\uACE0 \uC0C1\uC138 \uBCF8\uBB38\uC744 \uBCF4\uC5EC\uC8FC\uB294 \uC601\uC5ED\uC785\uB2C8\uB2E4.",
+  rawEmpty: "\uC0C1\uC138 JD\uAC00 \uC544\uC9C1 \uC218\uC9D1\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  rawPending:
+    "\uBAA9\uB85D \uC2A4\uB0C5\uC0F7\uB9CC \uC788\uACE0 \uACF5\uACE0 \uC0C1\uC138 \uBCF8\uBB38\uC740 \uC544\uC9C1 \uC900\uBE44\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  listingTitle: "\uBAA9\uB85D \uC2A4\uB0C5\uC0F7",
+  aiBlockedDetail:
+    "\uACF5\uACE0 \uC0C1\uC138 \uBCF8\uBB38\uC774 \uC5C6\uC5B4 AI \uD3C9\uAC00\uC640 \uC0DD\uC131 \uC791\uC5C5\uC744 \uC9C4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  aiBlockedOpenClaw:
+    "OpenClaw CLI\uAC00 \uC124\uCE58\uB418\uC9C0 \uC54A\uC544 AI \uC791\uC5C5\uC744 \uC2E4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  actionFailed:
+    "\uC694\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
   aiTitle: "AI \uD3C9\uAC00",
   aiDescription:
     "\uC801\uD569\uB3C4, \uB9AC\uC2A4\uD06C, \uCD94\uCC9C \uC2A4\uD1A0\uB9AC\uB97C \uC694\uC57D\uD574\uC11C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4.",
@@ -117,6 +130,27 @@ async function fetchJobDetail(jobId: string): Promise<JobDetail> {
   return (await response.json()) as JobDetail;
 }
 
+async function readActionError(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as {
+      message?: unknown;
+      error?: unknown;
+    };
+
+    if (typeof data.message === "string" && data.message.trim()) {
+      return data.message;
+    }
+
+    if (typeof data.error === "string" && data.error.trim()) {
+      return data.error;
+    }
+  } catch {
+    // Ignore non-JSON failures and fall through to a generic message.
+  }
+
+  return TEXT.actionFailed;
+}
+
 function SectionFrame({
   title,
   description,
@@ -177,6 +211,7 @@ export default function JobDetailPage() {
   const [replyMessage, setReplyMessage] = useState("");
   const [replyChannel, setReplyChannel] = useState("linkedin");
   const [outputContent, setOutputContent] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!jobId) {
@@ -199,11 +234,18 @@ export default function JobDetailPage() {
   }, [jobId]);
 
   const runAction = async (action: string, body?: Record<string, unknown>) => {
-    await fetch(`/api/jobs/${jobId}/${action}`, {
+    setActionError(null);
+
+    const response = await fetch(`/api/jobs/${jobId}/${action}`, {
       method: "POST",
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
+
+    if (!response.ok) {
+      setActionError(await readActionError(response));
+      return;
+    }
 
     const data = await fetchJobDetail(jobId);
     startTransition(() => setJob(data));
@@ -226,6 +268,13 @@ export default function JobDetailPage() {
   const risks = parseStringArray(job.risks);
   const recommendedStories = parseStringArray(job.recommended_stories);
   const sourceLabel = SOURCE_LABELS[job.source] ?? job.source;
+  const detailReady = job.detail_status === "ready" && Boolean(job.detailContent);
+  const aiReady = detailReady && job.openclaw_ready;
+  const aiBlockedMessage = !detailReady
+    ? TEXT.aiBlockedDetail
+    : !job.openclaw_ready
+      ? TEXT.aiBlockedOpenClaw
+      : null;
   const metaItems = [
     { label: TEXT.source, value: sourceLabel },
     { label: TEXT.location, value: job.location || TEXT.locationUnknown },
@@ -289,11 +338,23 @@ export default function JobDetailPage() {
           <SectionFrame
             title={TEXT.rawTitle}
             description={TEXT.rawDescription}
-            actions={job.rawContent ? <CopyButton text={job.rawContent} /> : undefined}
+            actions={job.detailContent ? <CopyButton text={job.detailContent} /> : undefined}
           >
-            <pre className="font-data max-h-[720px] overflow-auto whitespace-pre-wrap px-6 py-6 text-[13px] leading-7 text-[var(--foreground)]">
-              {job.rawContent || TEXT.rawEmpty}
-            </pre>
+            <div className="space-y-0">
+              <pre className="font-data max-h-[520px] overflow-auto whitespace-pre-wrap px-6 py-6 text-[13px] leading-7 text-[var(--foreground)]">
+                {job.detailContent || TEXT.rawEmpty}
+              </pre>
+              {!detailReady ? (
+                <div className="border-t border-[var(--border)] bg-[#fafbfc] px-6 py-5">
+                  <p className="text-[12px] tracking-[0.16em] text-[var(--muted-foreground-soft)]">
+                    {TEXT.listingTitle}
+                  </p>
+                  <pre className="font-data mt-3 max-h-[220px] overflow-auto whitespace-pre-wrap text-[12px] leading-6 text-[var(--muted-foreground)]">
+                    {job.listingContent || TEXT.rawPending}
+                  </pre>
+                </div>
+              ) : null}
+            </div>
           </SectionFrame>
 
           <SectionFrame title={TEXT.aiTitle} description={TEXT.aiDescription}>
@@ -329,23 +390,36 @@ export default function JobDetailPage() {
 
         <SectionFrame title={TEXT.actionTitle} description={TEXT.actionDescription}>
           <div className="px-6 py-6">
+            {aiBlockedMessage ? (
+              <div className="mb-5 rounded-[4px] border border-[var(--border)] bg-[#fafbfc] px-4 py-4 text-sm text-[var(--muted-foreground)]">
+                {aiBlockedMessage}
+              </div>
+            ) : null}
+            {actionError ? (
+              <div className="mb-5 rounded-[4px] border border-[#f3d2d2] bg-[#fff5f5] px-4 py-4 text-sm text-[#9f2d2d]">
+                {actionError}
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-3">
               <LoadingButton
                 onClick={() => runAction("evaluate")}
                 label={TEXT.evaluate}
                 loadingLabel={TEXT.evaluating}
+                disabled={!aiReady}
                 className="bg-accent hover:opacity-90"
               />
               <LoadingButton
                 onClick={() => runAction("generate-answers")}
                 label={TEXT.coverLetter}
                 loadingLabel={TEXT.generating}
+                disabled={!aiReady}
                 className="border border-[var(--border)] bg-white text-[var(--foreground)] hover:bg-[#fafbfc]"
               />
               <LoadingButton
                 onClick={() => runAction("generate-resume")}
                 label={TEXT.resume}
                 loadingLabel={TEXT.generating}
+                disabled={!aiReady}
                 className="border border-[var(--border)] bg-white text-[var(--foreground)] hover:bg-[#fafbfc]"
               />
             </div>
@@ -391,6 +465,7 @@ export default function JobDetailPage() {
                     }
                     label={TEXT.reply}
                     loadingLabel={TEXT.generating}
+                    disabled={!aiReady || !replyMessage.trim()}
                     className="w-full bg-[#0a0a0a] hover:opacity-90"
                   />
                 </div>

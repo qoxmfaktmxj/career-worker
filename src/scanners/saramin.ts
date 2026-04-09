@@ -1,3 +1,4 @@
+import { extractReadableText } from "@/scanners/detail-text";
 import type { ScanResult, Scanner, ScannerConfig } from "@/scanners/types";
 
 interface SaraminJob {
@@ -41,6 +42,14 @@ export function parseSaraminResponse(response: SaraminApiResponse): ScanResult[]
       raw_url: job.url || "",
       deadline,
       salary_text: job.salary?.name || "",
+      listing_text: [
+        job.position?.title,
+        job.position?.["experience-level"]?.name,
+        job.position?.location?.name,
+        job.salary?.name,
+      ]
+        .filter(Boolean)
+        .join("\n"),
       raw_text: [
         job.position?.title,
         job.position?.["experience-level"]?.name,
@@ -87,5 +96,26 @@ export const saraminScanner: Scanner = {
     const data = (await response.json()) as SaraminApiResponse;
 
     return parseSaraminResponse(data);
+  },
+
+  async fetchDetail(result: ScanResult): Promise<string | null> {
+    if (!result.raw_url) {
+      return null;
+    }
+
+    const response = await fetch(result.raw_url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CareerWorker/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Saramin detail fetch error: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const content = extractReadableText(html);
+
+    return content || null;
   },
 };

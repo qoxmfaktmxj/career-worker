@@ -116,7 +116,7 @@ describe("Jobs API routes", () => {
     expect(statusJobs[0]?.job_id).toBe("JOB-003");
   });
 
-  it("creates a manual job and persists raw JD content", async () => {
+  it("creates a manual job and persists listing/detail JD content", async () => {
     const jobsRoute = await import("@/app/api/jobs/route");
 
     const createResponse = await jobsRoute.POST(
@@ -135,12 +135,12 @@ describe("Jobs API routes", () => {
     expect(created.job_id).toMatch(/^JOB-/);
 
     const { getDb } = await import("@/lib/db");
-    const { readRawJob } = await import("@/lib/file-store");
+    const { readDetailJob, readListingJob } = await import("@/lib/file-store");
     const db = getDb();
     const saved = db
       .prepare(
         `
-          SELECT job_id, source, company, position, location, deadline, raw_url, status
+          SELECT job_id, source, company, position, location, deadline, raw_url, status, detail_status
           FROM jobs
           WHERE job_id = ?
         `
@@ -154,6 +154,7 @@ describe("Jobs API routes", () => {
       deadline: string;
       raw_url: string;
       status: string;
+      detail_status: string;
     };
 
     expect(saved).toMatchObject({
@@ -165,10 +166,10 @@ describe("Jobs API routes", () => {
       deadline: "2026-04-30",
       raw_url: "https://example.com/manual-job",
       status: "passed",
+      detail_status: "ready",
     });
-    expect(readRawJob(created.job_id)).toContain(
-      "We build internal platform tooling."
-    );
+    expect(readListingJob(created.job_id)).toContain("Manual Corp");
+    expect(readDetailJob(created.job_id)).toContain("We build internal platform tooling.");
   });
 
   it("rejects manual job creation without required fields", async () => {
@@ -250,9 +251,11 @@ describe("Jobs API routes", () => {
     });
   });
 
-  it("returns job detail with raw content and outputs", async () => {
+  it("returns job detail with listing/detail content and outputs", async () => {
     const { getDb } = await import("@/lib/db");
-    const { saveRawJob, saveOutput } = await import("@/lib/file-store");
+    const { saveDetailJob, saveListingJob, saveOutput } = await import(
+      "@/lib/file-store"
+    );
     const db = getDb();
 
     db.prepare(`
@@ -261,8 +264,14 @@ describe("Jobs API routes", () => {
       ) VALUES (?, ?, ?, ?, ?, ?)
     `).run("JOB-020", "saramin", "Alpha", "Backend", "passed", "initial memo");
 
-    saveRawJob("JOB-020", "# Raw JD\n- detail");
+    saveListingJob("JOB-020", "# Listing\n- summary");
+    saveDetailJob("JOB-020", "# Detail JD\n- full detail");
     const outputPath = saveOutput("JOB-020", "resume", "# Resume");
+    db.prepare(`
+      UPDATE jobs
+      SET listing_file = ?, detail_file = ?, detail_status = 'ready'
+      WHERE job_id = ?
+    `).run("listings/JOB-020.md", "details/JOB-020.md", "JOB-020");
     db.prepare(`
       INSERT INTO outputs (job_id, type, file_path, language, version)
       VALUES (?, ?, ?, ?, ?)
@@ -275,13 +284,19 @@ describe("Jobs API routes", () => {
     );
     const detail = (await response.json()) as {
       job_id: string;
-      rawContent: string;
+      listingContent: string;
+      detailContent: string;
+      detail_status: string;
+      openclaw_ready: boolean;
       outputs: Array<{ type: string; file_path: string }>;
     };
 
     expect(response.status).toBe(200);
     expect(detail.job_id).toBe("JOB-020");
-    expect(detail.rawContent).toContain("Raw JD");
+    expect(detail.listingContent).toContain("Listing");
+    expect(detail.detailContent).toContain("Detail JD");
+    expect(detail.detail_status).toBe("ready");
+    expect(typeof detail.openclaw_ready).toBe("boolean");
     expect(detail.outputs).toHaveLength(1);
     expect(detail.outputs[0]).toMatchObject({
       type: "resume",

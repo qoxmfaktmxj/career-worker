@@ -1,8 +1,12 @@
 import crypto from "crypto";
 
 import { getDb } from "@/lib/db";
-import { deleteRawJob, saveRawJob } from "@/lib/job-file-store";
 import { applyFilter, type FilterConfig } from "@/lib/filters";
+import {
+  deleteStoredJobMarkdown,
+  saveDetailJob,
+  saveListingJob,
+} from "@/lib/job-file-store";
 import { generateJobId } from "@/lib/job-id";
 import { jobkoreaScanner } from "@/scanners/jobkorea";
 import { rememberScanner } from "@/scanners/remember";
@@ -25,6 +29,52 @@ function makeFingerprint(result: ScanResult): string {
     .slice(0, 32);
 }
 
+function getListingText(result: ScanResult): string {
+  return result.listing_text || result.raw_text || "";
+}
+
+function normalizeDeadline(deadline: string | undefined): {
+  deadlineText: string | null;
+  deadlineDate: string | null;
+  parseStatus: "missing" | "parsed" | "invalid";
+} {
+  if (!deadline) {
+    return {
+      deadlineText: null,
+      deadlineDate: null,
+      parseStatus: "missing",
+    };
+  }
+
+  const trimmed = deadline.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) {
+    return {
+      deadlineText: trimmed,
+      deadlineDate: trimmed,
+      parseStatus: "parsed",
+    };
+  }
+
+  return {
+    deadlineText: trimmed,
+    deadlineDate: null,
+    parseStatus: "invalid",
+  };
+}
+
+function buildListingContent(result: ScanResult): string {
+  return [
+    `# ${result.company} - ${result.position}`,
+    `- source: ${result.source}`,
+    `- url: ${result.raw_url}`,
+    `- collected_at: ${new Date().toISOString()}`,
+    "",
+    "# Listing Snapshot",
+    getListingText(result),
+  ].join("\n");
+}
+
 export function processResults(
   results: ScanResult[],
   filterConfig: FilterConfig
@@ -36,7 +86,7 @@ export function processResults(
     const filterResult = applyFilter(
       {
         position: result.position,
-        raw_text: result.raw_text,
+        raw_text: getListingText(result),
         location: result.location,
         company_size: result.company_size,
         employee_count: result.employee_count,
@@ -67,18 +117,30 @@ type PendingResult = {
   fingerprint: string;
   filterReason: string | null;
   status: "passed" | "filtered_out";
+  listingContent: string;
+  detailContent: string | null;
+  detailStatus: "ready" | "missing" | "failed";
 };
 
-function buildRawContent(result: ScanResult): string {
-  return [
-    `# ${result.company} - ${result.position}`,
-    `- source: ${result.source}`,
-    `- url: ${result.raw_url}`,
-    `- collected_at: ${new Date().toISOString()}`,
-    "",
-    "# 원문 JD",
-    result.raw_text,
-  ].join("\n");
+async function collectDetailContent(
+  scanner: Scanner,
+  result: ScanResult
+): Promise<{ detailContent: string | null; detailStatus: "ready" | "missing" | "failed" }> {
+  if (!scanner.fetchDetail) {
+    return { detailContent: null, detailStatus: "missing" };
+  }
+
+  try {
+    const content = await scanner.fetchDetail(result);
+
+    if (!content || !content.trim()) {
+      return { detailContent: null, detailStatus: "missing" };
+    }
+
+    return { detailContent: content, detailStatus: "ready" };
+  } catch {
+    return { detailContent: null, detailStatus: "failed" };
+  }
 }
 
 export async function runScan(
@@ -116,7 +178,7 @@ export async function runScan(
     };
     const pendingResults: PendingResult[] = [];
     const seenFingerprints = new Set<string>();
-    const createdRawFiles: string[] = [];
+    const createdJobFiles: string[] = [];
 
     for (const result of results) {
       const fingerprint = makeFingerprint(result);
@@ -140,7 +202,7 @@ export async function runScan(
       const filterResult = applyFilter(
         {
           position: result.position,
-          raw_text: result.raw_text,
+          raw_text: getListingText(result),
           location: result.location,
           company_size: result.company_size,
           employee_count: result.employee_count,
@@ -148,12 +210,19 @@ export async function runScan(
         filterConfig
       );
       const status = filterResult.passed ? "passed" : "filtered_out";
+      const { detailContent, detailStatus } = await collectDetailContent(
+        scanner,
+        result
+      );
 
       pendingResults.push({
         result,
         fingerprint,
         filterReason: filterResult.reason || null,
         status,
+        listingContent: buildListingContent(result),
+        detailContent,
+        detailStatus,
       });
 
       if (filterResult.passed) {
@@ -178,12 +247,19 @@ export async function runScan(
         employee_count,
         raw_url,
         deadline,
+        deadline_text,
+        deadline_date,
+        deadline_parse_status,
         salary_text,
         status,
         filter_reason,
+        listing_file,
+        detail_file,
+        detail_collected_at,
+        detail_status,
         raw_file
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertFingerprint = db.prepare(
       "INSERT INTO job_fingerprints (fingerprint, job_id, source) VALUES (?, ?, ?)"
@@ -191,9 +267,19 @@ export async function runScan(
     const persistPendingResults = db.transaction((items: PendingResult[]) => {
       for (const item of items) {
         const jobId = generateJobId();
-        const rawFilePath = saveRawJob(jobId, buildRawContent(item.result));
+        const listingFilePath = saveListingJob(jobId, item.listingContent);
+        createdJobFiles.push(listingFilePath);
 
-        createdRawFiles.push(rawFilePath);
+        let detailFilePath: string | null = null;
+        let detailCollectedAt: string | null = null;
+
+        if (item.detailContent) {
+          detailFilePath = saveDetailJob(jobId, item.detailContent);
+          detailCollectedAt = new Date().toISOString();
+          createdJobFiles.push(detailFilePath);
+        }
+
+        const deadline = normalizeDeadline(item.result.deadline);
 
         insertJob.run(
           jobId,
@@ -206,11 +292,18 @@ export async function runScan(
           item.result.company_size || null,
           item.result.employee_count || null,
           item.result.raw_url,
-          item.result.deadline || null,
+          deadline.deadlineDate,
+          deadline.deadlineText,
+          deadline.deadlineDate,
+          deadline.parseStatus,
           item.result.salary_text || null,
           item.status,
           item.filterReason,
-          rawFilePath
+          listingFilePath,
+          detailFilePath,
+          detailCollectedAt,
+          item.detailStatus,
+          detailFilePath ?? listingFilePath
         );
 
         insertFingerprint.run(item.fingerprint, jobId, item.result.source);
@@ -220,9 +313,9 @@ export async function runScan(
     try {
       persistPendingResults(pendingResults);
     } catch (error) {
-      for (const rawFilePath of createdRawFiles) {
+      for (const jobFilePath of createdJobFiles) {
         try {
-          deleteRawJob(rawFilePath);
+          deleteStoredJobMarkdown(jobFilePath);
         } catch {
           // Preserve the original scan error.
         }
