@@ -145,9 +145,9 @@ Copy-Item .env.example .env
 
 선택 값:
 
-- `SARAMIN_API_KEY`: Saramin API 사용 시 필요
+- `SARAMIN_API_KEY`: Saramin 자동 수집 시 필요, 없어도 `/jobs`의 직접 등록과 기존 공고 검토는 가능
 - `OPENCLAW_TIMEOUT`: OpenClaw 호출 타임아웃
-- `PORT`: 기본값 `3010`
+- `PORT`: `.env.example` 기본값은 `3010`이지만 현재 `npm run dev`, `npm run start` 스크립트는 `3010`으로 고정
 - `DATA_DIR`, `PROFILE_DIR`, `JOBS_DIR`, `OUTPUTS_DIR`: 기본 상대 경로 또는 절대 경로
 
 ### 3. 개발 서버 실행
@@ -159,6 +159,14 @@ npm run dev
 기본 접속 주소:
 
 - [http://localhost:3010](http://localhost:3010)
+
+`3010` 포트가 이미 사용 중이면 현재 스크립트 대신 아래처럼 직접 실행해야 합니다.
+
+```bash
+npx next dev -p 3011
+```
+
+AI 생성 액션까지 확인하려면 `SARAMIN_API_KEY`와 별개로 `openclaw` CLI도 설치되어 있어야 합니다.
 
 ## 테스트와 빌드
 

@@ -175,7 +175,15 @@ export function getWorkflowStatus(job: Record<string, unknown>): WorkflowStatus 
     return derivedStatus;
   }
 
-  return workflowStatus === "idle" ? derivedStatus : workflowStatus;
+  if (workflowStatus === "idle") {
+    return derivedStatus;
+  }
+
+  if (workflowStatus === "detail_ready" && derivedStatus !== "detail_ready") {
+    return derivedStatus;
+  }
+
+  return workflowStatus;
 }
 
 export function getApplicationStatus(

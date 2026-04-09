@@ -23,7 +23,10 @@ export async function GET(
   const outputs = db
     .prepare("SELECT * FROM outputs WHERE job_id = ? ORDER BY created_at DESC")
     .all(jobId);
-  const resolvedJob = applyResolvedStatuses(job);
+  const resolvedJob = applyResolvedStatuses({
+    ...job,
+    detail_status: detailStatus,
+  });
 
   return NextResponse.json({
     ...resolvedJob,

@@ -468,6 +468,46 @@ describe("Jobs API routes", () => {
     });
   });
 
+  it("downgrades stale detail-ready workflow metadata when the detail file is missing", async () => {
+    const { getDb } = await import("@/lib/db");
+    const { saveListingJob } = await import("@/lib/file-store");
+    const db = getDb();
+
+    db.prepare(`
+      INSERT INTO jobs (
+        job_id, source, company, position, status, fit_status, workflow_status, application_status, listing_file, detail_file, detail_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "JOB-021",
+      "manual",
+      "Stale Detail Corp",
+      "Backend Engineer",
+      "passed",
+      "passed",
+      "detail_ready",
+      "not_started",
+      saveListingJob("JOB-021", "# Listing"),
+      "details/JOB-021.md",
+      "ready"
+    );
+
+    const jobRoute = await import("@/app/api/jobs/[jobId]/route");
+    const response = await jobRoute.GET(
+      makeRequest("http://localhost/api/jobs/JOB-021", "GET"),
+      { params: Promise.resolve({ jobId: "JOB-021" }) }
+    );
+    const detail = (await response.json()) as {
+      detail_status: string;
+      workflow_status: string;
+      detailContent: string;
+    };
+
+    expect(response.status).toBe(200);
+    expect(detail.detail_status).toBe("missing");
+    expect(detail.workflow_status).toBe("detail_pending");
+    expect(detail.detailContent).toBe("");
+  });
+
   it("updates job status and memo", async () => {
     const { getDb } = await import("@/lib/db");
     const db = getDb();

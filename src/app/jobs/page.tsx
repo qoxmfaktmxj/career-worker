@@ -152,6 +152,7 @@ export default function JobsPage() {
             className="grid items-center gap-3 border-b border-[var(--border)] px-6 py-5 md:grid-cols-[132px_132px_minmax(0,1fr)_56px]"
           >
             <select
+              aria-label="상태 필터"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
               className="focus-accent h-9 w-[132px] rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
@@ -164,6 +165,7 @@ export default function JobsPage() {
             </select>
 
             <select
+              aria-label="채널 필터"
               value={source}
               onChange={(event) => setSource(event.target.value)}
               className="focus-accent h-9 w-[132px] rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
@@ -176,6 +178,7 @@ export default function JobsPage() {
             </select>
 
             <input
+              aria-label="검색어"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="검색어 입력"
@@ -311,6 +314,7 @@ export default function JobsPage() {
                   className="focus-accent h-10 rounded-[4px] border border-[var(--border)] bg-white px-3 text-sm outline-none"
                 />
                 <input
+                  aria-label="마감일 (선택)"
                   type="date"
                   value={createForm.deadline}
                   onChange={(event) =>
